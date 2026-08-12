@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Gopher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+  :root{
+    --soil:#132238;
+    --soil-deep:#0A1626;
+    --loam:#1B3049;
+    --loam-light:#2B4A6B;
+    --moss:#4C9FE8;
+    --moss-dark:#2E6FB0;
+    --amber:#F2B705;
+    --chalk:#F2F6FB;
+    --chalk-dim:#93A8C2;
+    --rust:#E0584B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:radial-gradient(120% 100% at 50% 0%, var(--soil) 0%, var(--soil-deep) 70%);
+    color:var(--chalk);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow-x:hidden;
+  }
+  .stage{
+    width:100%;
+    max-width:420px;
+    min-height:100vh;
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    position:relative;
+  }
+  .screen{ display:none; }
+  .screen.active{ display:flex; flex-direction:column; align-items:center; animation:fadeIn .5s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ---------- Logo mark ---------- */
+  .mark{ position:relative; width:96px; height:96px; margin-bottom:18px; }
+  .mark svg{ width:100%; height:100%; overflow:visible; }
+  .mark-head{ transform-origin:60px 78px; animation:rise 1.1s cubic-bezier(.34,1.56,.64,1) forwards; }
+  @keyframes rise{
+    0%{ transform:translateY(26px) scale(.7); opacity:0; }
+    60%{ transform:translateY(-4px) scale(1.04); opacity:1; }
+    100%{ transform:translateY(0) scale(1); opacity:1; }
+  }
+  .wordmark{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:-0.01em;
+    margin-bottom:6px;
+  }
+  .tagline{
+    font-size:11px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--moss);
+    margin-bottom:34px;
+  }
+
+  /* ---------- Loading (tunnel dig) bar ---------- */
+  .dig-track{
+    width:220px;
+    height:3px;
+    background:var(--loam-light);
+    border-radius:4px;
+    overflow:hidden;
+    position:relative;
+  }
+  .dig-fill{
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:0%;
+    background:var(--moss);
+    border-radius:4px;
+    animation:dig 2.1s ease forwards;
+  }
+  @keyframes dig{ to{ width:100%; } }
+  .dig-label{
+    margin-top:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--chalk-dim);
+    letter-spacing:0.04em;
+  }
+
+  /* ---------- Role select ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--moss);
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    margin-bottom:8px;
+    align-self:flex-start;
+  }
+  .h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:26px;
+    margin-bottom:28px;
+    align-self:flex-start;
+  }
+  .role-card{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--loam);
+    border:1px solid var(--loam-light);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+    cursor:pointer;
+    transition:border-color .15s ease, transform .15s ease;
+    text-align:left;
+  }
+  .role-card:active{ transform:scale(0.98); }
+  .role-card:hover{ border-color:var(--moss); }
+  .role-icon{
+    width:44px; height:44px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--soil-deep);
+    flex-shrink:0;
+  }
+  .role-copy .role-title{ font-weight:600; font-size:15px; margin-bottom:2px; }
+  .role-copy .role-sub{ font-size:12px; color:var(--chalk-dim); }
+
+  /* ---------- Login ---------- */
+  .back{
+    align-self:flex-start;
+    display:flex; align-items:center; gap:6px;
+    color:var(--chalk-dim);
+    font-size:13px;
+    background:none; border:none; cursor:pointer;
+    margin-bottom:20px;
+    font-family:'Space Grotesk', sans-serif;
+  }
+  .field{ width:100%; margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--chalk-dim);
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    background:var(--loam);
+    border:1px solid var(--loam-light);
+    border-radius:12px;
+    padding:13px 14px;
+    color:var(--chalk);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    outline:none;
+  }
+  .field input:focus{ border-color:var(--moss); }
+  .btn{
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .btn-primary{ background:var(--moss); color:var(--soil-deep); }
+  .btn-primary:active{ opacity:0.85; }
+  .role-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--soil-deep);
+    border:1px solid var(--loam-light);
+    padding:5px 12px;
+    border-radius:999px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--amber);
+    margin-bottom:22px;
+    text-transform:capitalize;
+  }
+
+  /* ---------- Welcome ---------- */
+  .welcome-mark{ width:64px; height:64px; margin-bottom:20px; }
+  .welcome-title{ font-family:'Fraunces', serif; font-weight:600; font-size:24px; margin-bottom:8px; text-align:center; }
+  .welcome-sub{ font-size:13px; color:var(--chalk-dim); text-align:center; margin-bottom:26px; }
+
+  /* ---------- App screens (customer / driver) ---------- */
+  .app-top{ width:100%; display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .app-top .back{ margin-bottom:0; }
+  .app-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--moss);
+    background:var(--soil-deep);
+    border:1px solid var(--loam-light);
+    padding:4px 10px;
+    border-radius:999px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+  .card{
+    width:100%;
+    background:var(--loam);
+    border:1px solid var(--loam-light);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .row{ display:flex; justify-content:space-between; align-items:center; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .dim{ color:var(--chalk-dim); }
+  .quote-line{ display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
+  .quote-total{ display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px solid var(--loam-light); font-size:16px; font-weight:600; color:var(--amber); }
+  .divider{ height:1px; background:var(--loam-light); margin:10px 0; }
+
+  .tunnel-wrap{
+    width:100%;
+    background:linear-gradient(180deg, var(--loam), var(--soil-deep));
+    border:1px solid var(--loam-light);
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .tunnel-wrap svg{ width:100%; height:110px; display:block; }
+  .tunnel-labels{ display:flex; justify-content:space-between; margin-top:4px; }
+  .tunnel-labels span{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--chalk-dim); }
+
+  .status-title{ font-weight:600; font-size:14px; margin-bottom:3px; }
+  .eta-box{ text-align:right; }
+  .eta-num{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:600; color:var(--amber); }
+
+  .order-card{ width:100%; }
+  .order-item{ font-weight:600; font-size:14px; }
+  .order-pay{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--amber); }
+  .order-route{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--chalk-dim); margin:6px 0 12px; }
+
+  .btn-secondary{ background:var(--amber); color:var(--soil-deep); }
+  .btn-ghost{ background:transparent; color:var(--chalk); border:1px solid var(--loam-light); }
+  .btn-tab-active{ background:var(--moss); color:var(--soil-deep); }
+  .btn-tab-inactive{ background:var(--loam); color:var(--chalk-dim); border:1px solid var(--loam-light); }
+
+  .empty-state{ text-align:center; padding:40px 10px; color:var(--chalk-dim); font-size:13px; }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;
+    top:18px;
+    left:50%;
+    transform:translateX(-50%) translateY(-12px);
+    background:var(--moss);
+    color:var(--soil-deep);
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:12px 20px;
+    border-radius:999px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+    z-index:50;
+    white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- On-page debug panel ---------- */
+  #debug-panel{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    max-height:40vh;
+    overflow-y:auto;
+    background:#0A0A0A;
+    border-top:2px solid var(--rust);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#ddd;
+    z-index:9999;
+    display:none;
+    padding:10px 12px 20px;
+  }
+  #debug-panel.show{ display:block; }
+  #debug-panel .debug-row{ padding:4px 0; border-bottom:1px solid #222; word-break:break-word; white-space:pre-wrap; }
+  #debug-panel .debug-error{ color:#ff8a80; }
+  #debug-panel .debug-log{ color:#9ad; }
+  #debug-toggle{
+    position:fixed;
+    right:12px; bottom:12px;
+    z-index:10000;
+    background:var(--rust);
+    color:white;
+    border:none;
+    border-radius:999px;
+    width:34px; height:34px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:600;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);
+  }
+</style>
+</head>
+<body>
+<button id="debug-toggle" onclick="toggleDebug()">🐞</button>
+<div id="debug-panel"></div>
+<script>
+  // ---------- On-page debug logger (so errors are visible without dev tools) ----------
+  const debugLog = [];
+  function pushDebug(type, args){
+    const msg = Array.from(args).map(a => {
+      if (a instanceof Error) return a.message;
+      if (typeof a === 'object') { try { return JSON.stringify(a); } catch(e){ return String(a); } }
+      return String(a);
+    }).join(' ');
+    debugLog.push({ type, msg, time: new Date().toLocaleTimeString() });
+    renderDebug();
+    if (type === 'error') document.getElementById('debug-panel').classList.add('show');
+  }
+  function renderDebug(){
+    const panel = document.getElementById('debug-panel');
+    panel.innerHTML = debugLog.slice(-40).map(l =>
+      `<div class="debug-row ${l.type === 'error' ? 'debug-error' : 'debug-log'}">[${l.time}] ${l.msg}</div>`
+    ).join('');
+    panel.scrollTop = panel.scrollHeight;
+  }
+  function toggleDebug(){
+    document.getElementById('debug-panel').classList.toggle('show');
+  }
+  const _origError = console.error.bind(console);
+  const _origLog = console.log.bind(console);
+  console.error = (...args) => { pushDebug('error', args); _origError(...args); };
+  console.log = (...args) => { pushDebug('log', args); _origLog(...args); };
+  window.addEventListener('error', (e) => pushDebug('error', [e.message + ' (' + e.filename + ':' + e.lineno + ')']));
+  window.addEventListener('unhandledrejection', (e) => pushDebug('error', ['Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)]));
+  pushDebug('log', ['Debug panel ready']);
+</script>
+<div class="stage">
+  <div class="toast" id="toast"></div>
+
+  <!-- LOADING SCREEN -->
+  <div class="screen active" id="screen-loading" style="align-items:center;">
+    <div class="mark">
+      <svg viewBox="0 0 120 100">
+        <ellipse cx="60" cy="86" rx="46" ry="8" fill="#0000004d"/>
+        <g class="mark-head">
+          <ellipse cx="60" cy="52" rx="34" ry="30" fill="var(--moss)"/>
+          <circle cx="34" cy="30" r="11" fill="var(--moss)"/>
+          <circle cx="86" cy="30" r="11" fill="var(--moss)"/>
+          <circle cx="34" cy="30" r="5" fill="var(--soil-deep)"/>
+          <circle cx="86" cy="30" r="5" fill="var(--soil-deep)"/>
+          <circle cx="46" cy="50" r="4.5" fill="var(--soil-deep)"/>
+          <circle cx="74" cy="50" r="4.5" fill="var(--soil-deep)"/>
+          <ellipse cx="60" cy="64" rx="9" ry="6.5" fill="var(--amber)"/>
+        </g>
+      </svg>
+    </div>
+    <div class="wordmark">Gopher</div>
+    <div class="tagline">we'll fetch it</div>
+    <div class="dig-track"><div class="dig-fill"></div></div>
+    <div class="dig-label">digging up your experience…</div>
+  </div>
+
+  <!-- ROLE SELECT -->
+  <div class="screen" id="screen-role">
+    <span class="eyebrow">Get started</span>
+    <h1 class="h1">How are you<br/>using Gopher?</h1>
+
+    <div class="role-card" onclick="chooseRole('customer')">
+      <div class="role-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--moss)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l1-3h16l1 3"/><path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M9 12h6"/></svg>
+      </div>
+      <div class="role-copy">
+        <div class="role-title">I'm a customer</div>
+        <div class="role-sub">Request pickups & deliveries</div>
+      </div>
+    </div>
+
+    <div class="role-card" onclick="chooseRole('driver')">
+      <div class="role-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l3 4v4a1 1 0 0 1-1 1h-1"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+      </div>
+      <div class="role-copy">
+        <div class="role-title">I'm a driver</div>
+        <div class="role-sub">Accept runs & get paid</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="screen" id="screen-login">
+    <button class="back" onclick="showScreen('screen-role')">&larr; Back</button>
+    <span class="role-pill" id="login-role-pill">customer</span>
+    <h1 class="h1" id="login-title" style="margin-bottom:18px;">Log in</h1>
+
+    <div class="row" style="width:100%; gap:8px; margin-bottom:18px;">
+      <button type="button" id="tab-signin" class="btn" style="flex:1; margin-top:0;" onclick="setAuthMode('signin')">Log in</button>
+      <button type="button" id="tab-signup" class="btn" style="flex:1; margin-top:0;" onclick="setAuthMode('signup')">Sign up</button>
+    </div>
+
+    <div style="width:100%;">
+      <div class="field">
+        <label>Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="login-password" type="password" placeholder="••••••••" />
+      </div>
+      <div id="auth-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
+      <button class="btn btn-primary" type="button" id="auth-submit" onclick="doAuth()">Log in</button>
+    </div>
+  </div>
+
+  <!-- ============ CUSTOMER: REQUEST ============ -->
+  <div class="screen" id="screen-customer-request">
+    <div class="app-top">
+      <button class="back" onclick="logOut()">&larr; Log out</button>
+      <span class="app-badge">customer</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:6px;">Request a run</h1>
+    <p class="dim" style="font-size:13px; margin-bottom:16px;">Tell us what you need, and where. We'll dig up a quote.</p>
+    <button class="btn btn-ghost" style="margin-bottom:20px;" onclick="viewMyOrders()">📦 My orders</button>
+
+    <div class="field">
+      <label>What do you need picked up</label>
+      <input id="cu-item" type="text" placeholder="e.g. Forgotten gym bag" />
+    </div>
+    <div class="field">
+      <label>Pickup from</label>
+      <input id="cu-pickup" type="text" placeholder="e.g. 14 Birchwood Ave" />
+    </div>
+    <div class="field">
+      <label>Deliver to</label>
+      <input id="cu-dropoff" type="text" placeholder="e.g. 220 Main St, Apt 4" />
+    </div>
+    <button class="btn btn-primary" onclick="getQuote()">Get a quote</button>
+  </div>
+
+  <!-- ============ CUSTOMER: QUOTE ============ -->
+  <div class="screen" id="screen-customer-quote">
+    <div class="app-top">
+      <button class="back" onclick="showScreen('screen-customer-request')">&larr; Back</button>
+      <span class="app-badge">customer</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:18px;">Your quote</h1>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:6px;">
+        <span class="order-item" id="q-item"></span>
+      </div>
+      <div class="mono dim" style="font-size:11px;" id="q-route"></div>
+    </div>
+
+    <div class="card">
+      <div class="quote-line dim mono"><span>Base fee</span><span id="q-base"></span></div>
+      <div class="quote-line dim mono"><span>Distance</span><span id="q-distance"></span></div>
+      <div class="quote-line dim mono"><span>Service fee</span><span id="q-service"></span></div>
+      <div class="quote-total mono"><span>Total</span><span id="q-total"></span></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="payAndTrack()">Pay & confirm</button>
+  </div>
+
+  <!-- ============ CUSTOMER: TRACKING ============ -->
+  <div class="screen" id="screen-customer-tracking">
+    <div class="app-top">
+      <button class="back" onclick="logOut()">&larr; Log out</button>
+      <span class="app-badge">customer</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:14px;">Tracking</h1>
+
+    <div class="tunnel-wrap">
+      <svg viewBox="0 0 300 120">
+        <path d="M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40" fill="none" stroke="var(--loam-light)" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <path id="cu-progress-path" d="M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40" fill="none" stroke="var(--moss)" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round" style="clip-path:inset(0 96% 0 0);"/>
+        <circle cx="20" cy="90" r="5" fill="var(--amber)"/>
+        <circle cx="280" cy="40" r="5" fill="var(--rust)"/>
+        <g id="cu-marker" style="offset-path:path('M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40'); offset-distance:4%; transition:offset-distance 0.8s linear;">
+          <circle r="8" fill="var(--chalk)"/>
+          <circle r="4" fill="var(--moss)"/>
+        </g>
+      </svg>
+      <div class="tunnel-labels"><span>Driver</span><span>You</span></div>
+    </div>
+
+    <div id="cu-map" style="width:100%; height:220px; border-radius:16px; overflow:hidden; margin-bottom:14px; border:1px solid var(--loam-light);"></div>
+
+    <div class="card row">
+      <div>
+        <div class="status-title" id="cu-status">Finding a gopher nearby…</div>
+        <div class="mono dim" style="font-size:11px;" id="cu-driver-detail">Live location updates once a gopher accepts</div>
+      </div>
+      <div class="eta-box">
+        <div class="mono dim" style="font-size:11px;">ETA</div>
+        <div class="eta-num"><span id="cu-eta">12</span>m</div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" onclick="viewMyOrders()">📦 My orders</button>
+    <button class="btn btn-ghost" onclick="resetCustomer()">New request</button>
+  </div>
+
+  <!-- ============ CUSTOMER: MY ORDERS ============ -->
+  <div class="screen" id="screen-customer-orders">
+    <div class="app-top">
+      <button class="back" onclick="showScreen('screen-customer-request')">&larr; Back</button>
+      <span class="app-badge">customer</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:18px;">My orders</h1>
+    <div id="cu-orders-list" style="width:100%;"></div>
+    <button class="btn btn-primary" style="margin-top:6px;" onclick="resetCustomer()">+ New request</button>
+  </div>
+
+  <!-- ============ DRIVER: ORDERS ============ -->
+  <div class="screen" id="screen-driver-orders">
+    <div class="app-top">
+      <button class="back" onclick="logOut()">&larr; Log out</button>
+      <span class="app-badge" style="color:var(--amber);">● online</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:14px;">Available runs</h1>
+    <button class="btn btn-ghost" style="margin-bottom:16px;" onclick="viewDriverHistory()">🧾 My runs</button>
+    <div id="driver-orders-list" style="width:100%;"></div>
+  </div>
+
+  <!-- ============ DRIVER: MY RUNS (HISTORY) ============ -->
+  <div class="screen" id="screen-driver-history">
+    <div class="app-top">
+      <button class="back" onclick="showScreen('screen-driver-orders')">&larr; Back</button>
+      <span class="app-badge" style="color:var(--amber);">driver</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:18px;">My runs</h1>
+    <div id="driver-history-list" style="width:100%;"></div>
+  </div>
+
+  <!-- ============ DRIVER: NAVIGATING ============ -->
+  <div class="screen" id="screen-driver-navigating">
+    <div class="app-top">
+      <button class="back" onclick="showScreen('screen-driver-orders')">&larr; Back</button>
+      <span class="app-badge" id="dr-run-id">run</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:14px;">Navigate</h1>
+
+    <div class="tunnel-wrap">
+      <svg viewBox="0 0 300 120">
+        <path d="M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40" fill="none" stroke="var(--loam-light)" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <path id="dr-progress-path" d="M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40" fill="none" stroke="var(--moss)" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round" style="clip-path:inset(0 96% 0 0);"/>
+        <circle cx="20" cy="90" r="5" fill="var(--amber)"/>
+        <circle cx="280" cy="40" r="5" fill="var(--rust)"/>
+        <g id="dr-marker" style="offset-path:path('M 20 90 C 90 90, 70 20, 150 30 S 250 90, 280 40'); offset-distance:4%; transition:offset-distance 0.8s linear;">
+          <circle r="8" fill="var(--chalk)"/>
+          <circle r="4" fill="var(--moss)"/>
+        </g>
+      </svg>
+      <div class="tunnel-labels"><span>Pickup</span><span>Drop-off</span></div>
+    </div>
+
+    <div id="dr-map" style="width:100%; height:220px; border-radius:16px; overflow:hidden; margin-bottom:14px; border:1px solid var(--loam-light);"></div>
+
+    <div class="card">
+      <div class="order-item" id="dr-item"></div>
+      <div class="mono dim" style="font-size:11px; margin-top:4px;" id="dr-instruction"></div>
+    </div>
+
+    <div id="dr-actions" style="width:100%;"></div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- Supabase setup ----------
+  const SUPABASE_URL = 'https://pgskgpcqyiljhmglmzfv.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_CkI8aFzF22eempw3riEYGA_J8whzMBE';
+  const PAYSTACK_PUBLIC_KEY = 'pk_test_8bf5b75452f637e70dc2312a133a39534b2c8328';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let selectedRole = 'customer';
+  let authMode = 'signin';
+  let currentUser = null;
+
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function chooseRole(role){
+    selectedRole = role;
+    document.getElementById('login-role-pill').textContent = role;
+    setAuthMode('signin');
+    showScreen('screen-login');
+  }
+
+  function enterApp(role){
+    selectedRole = role;
+    currentUser = { role };
+    showToast(role === 'driver' ? "You're in, gopher! 🚀" : 'Welcome! 👋');
+    if (role === 'driver'){
+      renderDriverOrders();
+      showScreen('screen-driver-orders');
+    } else {
+      showScreen('screen-customer-request');
+    }
+  }
+
+  function setAuthMode(mode){
+    authMode = mode;
+    document.getElementById('login-title').textContent =
+      (mode === 'signup' ? 'Create account' : 'Log in') + ' — ' + selectedRole;
+    document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
+    document.getElementById('tab-signin').className = 'btn ' + (mode === 'signin' ? 'btn-tab-active' : 'btn-tab-inactive');
+    document.getElementById('tab-signup').className = 'btn ' + (mode === 'signup' ? 'btn-tab-active' : 'btn-tab-inactive');
+    hideAuthError();
+  }
+
+  function showAuthError(msg){
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideAuthError(){
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  async function doAuth(){
+    hideAuthError();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password){ showAuthError('Enter an email and password.'); return; }
+
+    console.log('Attempting ' + authMode + ' for ' + email);
+    const btn = document.getElementById('auth-submit');
+    btn.disabled = true;
+    btn.textContent = 'Please wait…';
+
+    try{
+      if (authMode === 'signup'){
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { data: { role: selectedRole } }
+        });
+        if (error) throw error;
+        console.log('Signup response received, session present: ' + !!data.session);
+
+        if (!data.session){
+          showAuthError('Account created, but email confirmation is still required. Turn off "Confirm email" in Supabase → Authentication → Providers → Email, then try logging in.');
+          return;
+        }
+        currentUser = data.user;
+        showToast('Thanks for signing up! 🎉');
+        await routeAfterAuth();
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        showToast('Welcome back! 👋');
+        await routeAfterAuth();
+      }
+    } catch(err){
+      console.error('Auth error:', err);
+      showAuthError(err.message || 'Something went wrong.');
+    } finally {
+      btn.disabled = false;
+      setAuthMode(authMode);
+    }
+  }
+
+  async function routeAfterAuth(){
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user){ showScreen('screen-role'); return; }
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) console.error('Profile lookup error:', error);
+    const role = profile ? profile.role : selectedRole;
+
+    if (role === 'driver'){
+      renderDriverOrders();
+      showScreen('screen-driver-orders');
+    } else {
+      showScreen('screen-customer-request');
+    }
+  }
+
+  // Route based on the REAL role stored in the database, not just the button picked
+  async function routeAfterAuth(){
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user){ showScreen('screen-role'); return; }
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) console.error('Profile lookup error:', error);
+    const role = profile ? profile.role : selectedRole;
+
+    if (role === 'driver'){
+      renderDriverOrders();
+      showScreen('screen-driver-orders');
+    } else {
+      showScreen('screen-customer-request');
+    }
+  }
+
+  async function logOut(){
+    stopTracking();
+    stopLocationSharing();
+    clearInterval(driverListInterval);
+    resetCustomer();
+    await sb.auth.signOut();
+    currentUser = null;
+    showScreen('screen-role');
+  }
+
+  // If already logged in (e.g. page refresh), skip straight to the right screen
+  async function checkExistingSession(){
+    const { data: { session } } = await sb.auth.getSession();
+    if (session){
+      currentUser = session.user;
+      await routeAfterAuth();
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- money / quote helpers ----------
+  function money(n){ return 'R' + n.toFixed(2); }
+
+  function computeQuote(pickup, dropoff, item){
+    const seed = (pickup + dropoff + item).length;
+    const distanceFee = 3.25 + ((seed * 37) % 900) / 100;
+    const base = 4.0;
+    const serviceFee = 1.5;
+    return { base, distanceFee, serviceFee, total: base + distanceFee + serviceFee };
+  }
+
+  let currentQuote = null;
+
+  // ---------- geocoding (free, via OpenStreetMap Nominatim) ----------
+  async function geocodeAddress(address){
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(address));
+      const results = await res.json();
+      if (results && results[0]) return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+      console.error('No geocoding match for: ' + address);
+    } catch(e){ console.error('Geocoding failed: ' + e.message); }
+    return null;
+  }
+
+  async function getQuote(){
+    const item = document.getElementById('cu-item').value.trim();
+    const pickup = document.getElementById('cu-pickup').value.trim();
+    const dropoff = document.getElementById('cu-dropoff').value.trim();
+    if (!item || !pickup || !dropoff) return;
+
+    currentQuote = { item, pickup, dropoff, ...computeQuote(pickup, dropoff, item) };
+
+    document.getElementById('q-item').textContent = item;
+    document.getElementById('q-route').textContent = pickup + ' → ' + dropoff;
+    document.getElementById('q-base').textContent = money(currentQuote.base);
+    document.getElementById('q-distance').textContent = money(currentQuote.distanceFee);
+    document.getElementById('q-service').textContent = money(currentQuote.serviceFee);
+    document.getElementById('q-total').textContent = money(currentQuote.total);
+
+    showScreen('screen-customer-quote');
+
+    // Geocode in the background so coordinates are ready by the time payAndTrack runs
+    const [pickupCoord, dropoffCoord] = await Promise.all([geocodeAddress(pickup), geocodeAddress(dropoff)]);
+    currentQuote.pickupCoord = pickupCoord;
+    currentQuote.dropoffCoord = dropoffCoord;
+  }
+
+  // ---------- customer tracking (backed by the real orders table) ----------
+  let trackInterval = null;
+  let activeOrderId = null;
+  let cuMap = null, cuDriverMarker = null;
+
+  function setTunnelProgress(prefix, pct){
+    document.getElementById(prefix + '-progress-path').style.clipPath = 'inset(0 ' + (100 - pct) + '% 0 0)';
+    document.getElementById(prefix + '-marker').style.offsetDistance = pct + '%';
+  }
+
+  const STATUS_MAP = {
+    pending:   { pct: 6,  label: 'Waiting for a gopher to accept…' },
+    accepted:  { pct: 30, label: 'A gopher is heading to pick up your item' },
+    picked_up: { pct: 65, label: 'Picked up — on the way to you' },
+    delivered: { pct: 100, label: 'Delivered!' },
+  };
+
+  function initMap(containerId, pickupCoord, dropoffCoord){
+    const el = document.getElementById(containerId);
+    el.innerHTML = ''; // clear any previous map instance
+    const center = pickupCoord || dropoffCoord || { lat: 0, lng: 0 };
+    const map = L.map(containerId).setView([center.lat, center.lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const bounds = [];
+    if (pickupCoord){
+      L.circleMarker([pickupCoord.lat, pickupCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#F2B705', fillOpacity: 1 })
+        .addTo(map).bindPopup('Pickup');
+      bounds.push([pickupCoord.lat, pickupCoord.lng]);
+    }
+    if (dropoffCoord){
+      L.circleMarker([dropoffCoord.lat, dropoffCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#E0584B', fillOpacity: 1 })
+        .addTo(map).bindPopup('Drop-off');
+      bounds.push([dropoffCoord.lat, dropoffCoord.lng]);
+    }
+    if (bounds.length === 2) map.fitBounds(bounds, { padding: [30, 30] });
+    return map;
+  }
+
+  async function payAndTrack(){
+    if (!currentQuote || !currentUser){ console.error('No quote or user to submit order'); return; }
+
+    const pc = currentQuote.pickupCoord, dc = currentQuote.dropoffCoord;
+    const { data, error } = await sb.from('orders').insert({
+      customer_id: currentUser.id,
+      item: currentQuote.item,
+      pickup: currentQuote.pickup,
+      dropoff: currentQuote.dropoff,
+      quote_total: currentQuote.total,
+      status: 'pending',
+      payment_status: 'unpaid',
+      pickup_lat: pc ? pc.lat : null,
+      pickup_lng: pc ? pc.lng : null,
+      dropoff_lat: dc ? dc.lat : null,
+      dropoff_lng: dc ? dc.lng : null
+    }).select().single();
+
+    if (error){ console.error('Order creation failed: ' + error.message); return; }
+
+    const amountInCents = Math.round(currentQuote.total * 100);
+
+    const handler = PaystackPop.setup({
+      key: PAYSTACK_PUBLIC_KEY,
+      email: currentUser.email,
+      amount: amountInCents,
+      currency: 'ZAR',
+      ref: 'gopher_' + data.id,
+      callback: function(response){
+        confirmPayment(response.reference, data.id, amountInCents, pc, dc);
+      },
+      onClose: function(){
+        console.log('Payment popup closed before completing — order left unpaid');
+      }
+    });
+    handler.openIframe();
+  }
+
+  async function confirmPayment(reference, orderId, amountInCents, pickupCoord, dropoffCoord){
+    showToast('Verifying payment…');
+    try{
+      const res = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference, orderId, expectedAmount: amountInCents })
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success){
+        console.error('Payment verification failed: ' + (result.error || 'unknown error'));
+        return;
+      }
+      showToast('Payment confirmed! 🎉');
+      startTrackingOrder(orderId, pickupCoord, dropoffCoord, 'pending', null);
+    } catch(err){
+      console.error('Verification request failed: ' + err.message);
+    }
+  }
+
+  // Shared by "just paid" and "opened from My Orders" — starts (or restores) live tracking
+  function startTrackingOrder(orderId, pickupCoord, dropoffCoord, initialStatus, driverCoord){
+    activeOrderId = orderId;
+    showScreen('screen-customer-tracking');
+    applyOrderStatus(initialStatus);
+    cuDriverMarker = null;
+    cuMap = initMap('cu-map', pickupCoord, dropoffCoord);
+
+    if (driverCoord){
+      cuDriverMarker = L.circleMarker([driverCoord.lat, driverCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
+        .addTo(cuMap).bindPopup('Your gopher');
+    }
+
+    stopTracking();
+    if (initialStatus === 'delivered') return; // nothing left to poll
+
+    trackInterval = setInterval(async () => {
+      const { data: order, error: fetchErr } = await sb
+        .from('orders')
+        .select('status, driver_lat, driver_lng')
+        .eq('id', activeOrderId)
+        .single();
+      if (fetchErr){ console.error('Order poll failed: ' + fetchErr.message); return; }
+      applyOrderStatus(order.status);
+
+      if (order.driver_lat && order.driver_lng && cuMap){
+        if (!cuDriverMarker){
+          cuDriverMarker = L.circleMarker([order.driver_lat, order.driver_lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
+            .addTo(cuMap).bindPopup('Your gopher');
+        } else {
+          cuDriverMarker.setLatLng([order.driver_lat, order.driver_lng]);
+        }
+      }
+      if (order.status === 'delivered') stopTracking();
+    }, 3000);
+  }
+
+  function applyOrderStatus(status){
+    const s = STATUS_MAP[status] || STATUS_MAP.pending;
+    setTunnelProgress('cu', s.pct);
+    document.getElementById('cu-status').textContent = s.label;
+    document.getElementById('cu-eta').textContent = status === 'delivered' ? '0' : '—';
+  }
+
+  function stopTracking(){
+    if (trackInterval){ clearInterval(trackInterval); trackInterval = null; }
+  }
+
+  function resetCustomer(){
+    stopTracking();
+    activeOrderId = null;
+    const item = document.getElementById('cu-item');
+    const pickup = document.getElementById('cu-pickup');
+    const dropoff = document.getElementById('cu-dropoff');
+    if (item) item.value = '';
+    if (pickup) pickup.value = '';
+    if (dropoff) dropoff.value = '';
+    currentQuote = null;
+    showScreen('screen-customer-request');
+  }
+
+  // ---------- My Orders (order history, persists across logins) ----------
+  function viewMyOrders(){
+    showScreen('screen-customer-orders');
+    loadCustomerOrders();
+  }
+
+  const STATUS_BADGE = {
+    pending: 'Waiting for a gopher',
+    accepted: 'Gopher on the way',
+    picked_up: 'Picked up',
+    delivered: 'Delivered',
+  };
+
+  async function loadCustomerOrders(){
+    const list = document.getElementById('cu-orders-list');
+    const { data: orders, error } = await sb
+      .from('orders')
+      .select('*')
+      .eq('customer_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error){
+      console.error('Loading orders failed: ' + error.message);
+      list.innerHTML = `<div class="empty-state">Couldn't load your orders. Check the debug panel.</div>`;
+      return;
+    }
+    if (!orders || orders.length === 0){
+      list.innerHTML = `<div class="empty-state">No orders yet.<br/>Request your first run!</div>`;
+      return;
+    }
+    list.innerHTML = orders.map(o => `
+      <div class="card order-card" style="cursor:pointer;" onclick="viewOrder('${o.id}')">
+        <div class="row">
+          <span class="order-item">${o.item}</span>
+          <span class="order-pay">${money(Number(o.quote_total))}</span>
+        </div>
+        <div class="order-route">${o.pickup} → ${o.dropoff}</div>
+        <div class="mono dim" style="font-size:11px;">${STATUS_BADGE[o.status] || o.status} · ${new Date(o.created_at).toLocaleDateString()}</div>
+      </div>
+    `).join('');
+  }
+
+  async function viewOrder(orderId){
+    const { data: order, error } = await sb.from('orders').select('*').eq('id', orderId).single();
+    if (error){ console.error('Failed to load order: ' + error.message); return; }
+
+    const pc = (order.pickup_lat && order.pickup_lng) ? { lat: order.pickup_lat, lng: order.pickup_lng } : null;
+    const dc = (order.dropoff_lat && order.dropoff_lng) ? { lat: order.dropoff_lat, lng: order.dropoff_lng } : null;
+    const drc = (order.driver_lat && order.driver_lng) ? { lat: order.driver_lat, lng: order.driver_lng } : null;
+
+    startTrackingOrder(order.id, pc, dc, order.status, drc);
+  }
+
+  // ---------- driver flow (backed by the real orders table) ----------
+  let activeOrder = null;
+  let driverStage = 'accepted';
+  let driverListInterval = null;
+
+  async function renderDriverOrders(){
+    const { data: orders, error } = await sb
+      .from('orders')
+      .select('*')
+      .eq('status', 'pending')
+      .eq('payment_status', 'paid')
+      .order('created_at', { ascending: false });
+
+    const list = document.getElementById('driver-orders-list');
+    if (error){
+      console.error('Fetching orders failed: ' + error.message);
+      list.innerHTML = `<div class="empty-state">Couldn't load runs. Check the debug panel.</div>`;
+      return;
+    }
+    if (!orders || orders.length === 0){
+      list.innerHTML = `<div class="empty-state">No runs available right now.<br/>Check back soon.</div>`;
+      return;
+    }
+    list.innerHTML = orders.map(o => `
+      <div class="card order-card">
+        <div class="row">
+          <span class="order-item">${o.item}</span>
+          <span class="order-pay">${money(Number(o.quote_total))}</span>
+        </div>
+        <div class="order-route">${o.pickup} → ${o.dropoff}</div>
+        <button class="btn btn-secondary" onclick="acceptOrder('${o.id}')">Accept run</button>
+      </div>
+    `).join('');
+
+    clearInterval(driverListInterval);
+    driverListInterval = setInterval(renderDriverOrders, 4000);
+  }
+
+  async function acceptOrder(orderId){
+    const { data, error } = await sb
+      .from('orders')
+      .update({ driver_id: currentUser.id, status: 'accepted' })
+      .eq('id', orderId)
+      .eq('status', 'pending') // fails safely if someone else already grabbed it
+      .select()
+      .single();
+
+    if (error || !data){
+      console.error('Could not accept run (it may already be taken): ' + (error ? error.message : ''));
+      renderDriverOrders();
+      return;
+    }
+
+    clearInterval(driverListInterval);
+    openRunScreen(data);
+    startLocationSharing();
+  }
+
+  // Shared setup for showing the navigate screen, whether just accepted or reopened from history
+  function openRunScreen(order){
+    activeOrder = order;
+    driverStage = order.status; // 'accepted' | 'picked_up' | 'delivered'
+    document.getElementById('dr-run-id').textContent = 'run #' + order.id.slice(0, 6);
+    document.getElementById('dr-item').textContent = order.item;
+
+    const pc = (order.pickup_lat && order.pickup_lng) ? { lat: order.pickup_lat, lng: order.pickup_lng } : null;
+    const dc = (order.dropoff_lat && order.dropoff_lng) ? { lat: order.dropoff_lat, lng: order.dropoff_lng } : null;
+    drMap = initMap('dr-map', pc, dc);
+
+    if (order.driver_lat && order.driver_lng){
+      drOwnMarker = L.circleMarker([order.driver_lat, order.driver_lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
+        .addTo(drMap).bindPopup('You');
+    }
+
+    updateDriverStageUI();
+    showScreen('screen-driver-navigating');
+  }
+
+  // ---------- driver run history ----------
+  function viewDriverHistory(){
+    showScreen('screen-driver-history');
+    loadDriverHistory();
+  }
+
+  async function loadDriverHistory(){
+    const list = document.getElementById('driver-history-list');
+    const { data: orders, error } = await sb
+      .from('orders')
+      .select('*')
+      .eq('driver_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error){
+      console.error('Loading run history failed: ' + error.message);
+      list.innerHTML = `<div class="empty-state">Couldn't load your runs. Check the debug panel.</div>`;
+      return;
+    }
+    if (!orders || orders.length === 0){
+      list.innerHTML = `<div class="empty-state">No runs accepted yet.</div>`;
+      return;
+    }
+    list.innerHTML = orders.map(o => `
+      <div class="card order-card" style="cursor:pointer;" onclick="resumeRun('${o.id}')">
+        <div class="row">
+          <span class="order-item">${o.item}</span>
+          <span class="order-pay">${money(Number(o.quote_total))}</span>
+        </div>
+        <div class="order-route">${o.pickup} → ${o.dropoff}</div>
+        <div class="mono dim" style="font-size:11px;">${STATUS_BADGE[o.status] || o.status} · ${new Date(o.created_at).toLocaleDateString()}</div>
+      </div>
+    `).join('');
+  }
+
+  async function resumeRun(orderId){
+    const { data: order, error } = await sb.from('orders').select('*').eq('id', orderId).single();
+    if (error){ console.error('Failed to load run: ' + error.message); return; }
+
+    openRunScreen(order);
+    if (order.status !== 'delivered') startLocationSharing();
+  }
+
+  // ---------- driver GPS sharing ----------
+  let drMap = null, drOwnMarker = null;
+  let geoWatchId = null, locPushInterval = null, lastKnownPos = null;
+
+  function startLocationSharing(){
+    stopLocationSharing();
+    if (!navigator.geolocation){ console.error('Geolocation not supported on this device/browser'); return; }
+
+    geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        lastKnownPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (drMap){
+          if (!drOwnMarker){
+            drOwnMarker = L.circleMarker([lastKnownPos.lat, lastKnownPos.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
+              .addTo(drMap).bindPopup('You');
+          } else {
+            drOwnMarker.setLatLng([lastKnownPos.lat, lastKnownPos.lng]);
+          }
+        }
+      },
+      (err) => console.error('Location error: ' + err.message),
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+
+    locPushInterval = setInterval(async () => {
+      if (!lastKnownPos || !activeOrder) return;
+      const { error } = await sb.from('orders')
+        .update({ driver_lat: lastKnownPos.lat, driver_lng: lastKnownPos.lng })
+        .eq('id', activeOrder.id);
+      if (error) console.error('Location push failed: ' + error.message);
+    }, 5000);
+  }
+
+  function stopLocationSharing(){
+    if (geoWatchId !== null){ navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
+    if (locPushInterval){ clearInterval(locPushInterval); locPushInterval = null; }
+    drOwnMarker = null;
+    lastKnownPos = null;
+  }
+
+  function openNavigation(address){
+    const url = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address);
+    window.open(url, '_blank');
+  }
+
+  function updateDriverStageUI(){
+    const instr = document.getElementById('dr-instruction');
+    const actions = document.getElementById('dr-actions');
+
+    if (driverStage === 'accepted'){
+      setTunnelProgress('dr', 25);
+      instr.textContent = 'Navigate to ' + activeOrder.pickup;
+      actions.innerHTML = `
+        <button class="btn btn-secondary" onclick="openNavigation('${activeOrder.pickup.replace(/'/g, "\\'")}')">🧭 Open in Maps</button>
+        <button class="btn btn-primary" onclick="advanceDriver()">Mark picked up</button>`;
+    } else if (driverStage === 'picked_up'){
+      setTunnelProgress('dr', 60);
+      instr.textContent = 'Navigate to ' + activeOrder.dropoff;
+      actions.innerHTML = `
+        <button class="btn btn-secondary" onclick="openNavigation('${activeOrder.dropoff.replace(/'/g, "\\'")}')">🧭 Open in Maps</button>
+        <button class="btn btn-primary" onclick="advanceDriver()">Mark delivered</button>`;
+    } else if (driverStage === 'delivered'){
+      setTunnelProgress('dr', 100);
+      instr.textContent = 'Run complete';
+      actions.innerHTML = `
+        <div class="row" style="color:var(--moss); font-size:13px; margin-bottom:12px;">
+          <span>💰 ${money(Number(activeOrder.quote_total))} added to your balance</span>
+        </div>
+        <button class="btn btn-ghost" onclick="backToRuns()">Back to runs</button>`;
+    }
+  }
+
+  async function advanceDriver(){
+    const nextStatus = driverStage === 'accepted' ? 'picked_up' : 'delivered';
+    const { error } = await sb
+      .from('orders')
+      .update({ status: nextStatus })
+      .eq('id', activeOrder.id);
+
+    if (error){ console.error('Status update failed: ' + error.message); return; }
+    driverStage = nextStatus;
+    updateDriverStageUI();
+    if (nextStatus === 'delivered') stopLocationSharing();
+  }
+
+  function backToRuns(){
+    stopLocationSharing();
+    activeOrder = null;
+    renderDriverOrders();
+    showScreen('screen-driver-orders');
+  }
+
+  // auto-advance from loading screen: skip to app if already logged in, else role select
+  setTimeout(async () => {
+    const loggedIn = await checkExistingSession();
+    if (!loggedIn) showScreen('screen-role');
+  }, 2300);
+</script>
+</body>
+</html>
