@@ -323,7 +323,7 @@
   /* ---------- Hamburger menu ---------- */
   #menu-toggle{
     position:fixed;
-    top:18px; left:18px;
+    bottom:18px; left:18px;
     z-index:60;
     width:40px; height:40px;
     border-radius:12px;
@@ -334,6 +334,7 @@
     cursor:pointer;
     align-items:center;
     justify-content:center;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);
   }
   #menu-backdrop{
     position:fixed; inset:0;
@@ -483,7 +484,19 @@
 <div id="menu-backdrop" onclick="closeMenu()"></div>
 <div id="menu-drawer">
   <div class="menu-header">
-    <span style="font-family:'Fraunces', serif; font-weight:600; font-size:20px;">Gopher</span>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <svg viewBox="0 0 120 100" width="30" height="26">
+        <ellipse cx="60" cy="52" rx="34" ry="30" fill="var(--moss)"/>
+        <circle cx="34" cy="30" r="11" fill="var(--moss)"/>
+        <circle cx="86" cy="30" r="11" fill="var(--moss)"/>
+        <circle cx="34" cy="30" r="5" fill="var(--soil-deep)"/>
+        <circle cx="86" cy="30" r="5" fill="var(--soil-deep)"/>
+        <circle cx="46" cy="50" r="4.5" fill="var(--soil-deep)"/>
+        <circle cx="74" cy="50" r="4.5" fill="var(--soil-deep)"/>
+        <ellipse cx="60" cy="64" rx="9" ry="6.5" fill="var(--amber)"/>
+      </svg>
+      <span style="font-family:'Fraunces', serif; font-weight:600; font-size:20px;">Gopher</span>
+    </div>
     <button id="menu-close" onclick="closeMenu()">✕</button>
   </div>
   <div class="menu-items">
@@ -1641,6 +1654,8 @@
   }
 
   // ---------- Profile ----------
+  let currentProfile = null;
+
   async function openProfile(){
     screenBeforeMenu = getActiveScreenId();
     closeMenu();
@@ -1661,12 +1676,18 @@
       return;
     }
 
+    currentProfile = profile;
+    renderProfileView();
+  }
+
+  function renderProfileView(){
+    const content = document.getElementById('profile-content');
     const rows = [
-      ['First name', profile.first_name || 'Not provided'],
-      ['Last name', profile.last_name || 'Not provided'],
-      ['Email', profile.email || currentUser.email],
-      ['Cell number', profile.phone || 'Not provided'],
-      ['Account type', profile.role],
+      ['First name', currentProfile.first_name || 'Not provided'],
+      ['Last name', currentProfile.last_name || 'Not provided'],
+      ['Email', currentProfile.email || currentUser.email],
+      ['Cell number', currentProfile.phone || 'Not provided'],
+      ['Account type', currentProfile.role],
     ];
     content.innerHTML = `
       <div class="card">
@@ -1677,7 +1698,60 @@
           </div>
         `).join('')}
       </div>
+      <button class="btn btn-primary" onclick="renderProfileEdit()">Edit profile</button>
     `;
+  }
+
+  function renderProfileEdit(){
+    const content = document.getElementById('profile-content');
+    content.innerHTML = `
+      <div class="field">
+        <label>First name</label>
+        <input id="edit-first-name" type="text" value="${currentProfile.first_name || ''}" />
+      </div>
+      <div class="field">
+        <label>Last name</label>
+        <input id="edit-last-name" type="text" value="${currentProfile.last_name || ''}" />
+      </div>
+      <div class="field">
+        <label>Cell number</label>
+        <input id="edit-phone" type="tel" value="${currentProfile.phone || ''}" />
+      </div>
+      <div id="profile-edit-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save changes</button>
+      <button class="btn btn-ghost" onclick="renderProfileView()">Cancel</button>
+    `;
+  }
+
+  async function saveProfile(){
+    const firstName = document.getElementById('edit-first-name').value.trim();
+    const lastName = document.getElementById('edit-last-name').value.trim();
+    const phone = document.getElementById('edit-phone').value.trim();
+    const errEl = document.getElementById('profile-edit-error');
+
+    if (!firstName || !lastName || !phone){
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const { data, error } = await sb
+      .from('profiles')
+      .update({ first_name: firstName, last_name: lastName, phone: phone })
+      .eq('id', currentUser.id)
+      .select()
+      .single();
+
+    if (error){
+      console.error('Profile update failed: ' + error.message);
+      errEl.textContent = 'Could not save changes — try again.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    currentProfile = data;
+    showToast('Profile updated ✅');
+    renderProfileView();
   }
 
   function closeProfile(){
