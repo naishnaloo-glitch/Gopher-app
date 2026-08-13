@@ -6,10 +6,10 @@
 <title>Gopher</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script src="https://js.paystack.co/v1/inline.js" crossorigin="anonymous"></script>
 <style>
   :root{
     --soil:#132238;
@@ -983,6 +983,12 @@
       bounds.push([dropoffCoord.lat, dropoffCoord.lng]);
     }
     if (bounds.length === 2) map.fitBounds(bounds, { padding: [30, 30] });
+
+    // Fixes the classic Leaflet "blank grey box" bug: if the container was still
+    // display:none (mid screen-transition) when the map measured itself, it gets
+    // stuck thinking it has zero size. Forcing a re-measure right after fixes it.
+    setTimeout(() => map.invalidateSize(), 150);
+
     return map;
   }
 
