@@ -961,6 +961,24 @@
     delivered: { pct: 100, label: 'Delivered!' },
   };
 
+  // ---------- ETA estimate (straight-line distance ÷ assumed average speed) ----------
+  const AVG_SPEED_KMH = 25; // rough urban delivery average — good enough for a ballpark ETA
+
+  function distanceKm(a, b){
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    const h = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function estimateEtaMinutes(from, to){
+    if (!from || !to) return null;
+    const km = distanceKm(from, to);
+    return Math.max(1, Math.round(km / AVG_SPEED_KMH * 60));
+  }
+
   function initMap(containerId, pickupCoord, dropoffCoord){
     const el = document.getElementById(containerId);
     el.innerHTML = ''; // clear any previous map instance
@@ -972,6 +990,11 @@
     }).addTo(map);
 
     const bounds = [];
+    if (pickupCoord && dropoffCoord){
+      L.polyline([[pickupCoord.lat, pickupCoord.lng], [dropoffCoord.lat, dropoffCoord.lng]], {
+        color: '#4C9FE8', weight: 4, opacity: 0.8
+      }).addTo(map);
+    }
     if (pickupCoord){
       L.circleMarker([pickupCoord.lat, pickupCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#F2B705', fillOpacity: 1 })
         .addTo(map).bindPopup('Pickup');
@@ -1051,8 +1074,12 @@
   }
 
   // Shared by "just paid" and "opened from My Orders" — starts (or restores) live tracking
+  let cuPickupCoord = null, cuDropoffCoord = null;
+
   function startTrackingOrder(orderId, pickupCoord, dropoffCoord, initialStatus, driverCoord){
     activeOrderId = orderId;
+    cuPickupCoord = pickupCoord;
+    cuDropoffCoord = dropoffCoord;
     showScreen('screen-customer-tracking');
     applyOrderStatus(initialStatus);
     cuDriverMarker = null;
@@ -1061,6 +1088,7 @@
     if (driverCoord){
       cuDriverMarker = L.circleMarker([driverCoord.lat, driverCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
         .addTo(cuMap).bindPopup('Your gopher');
+      updateEta(driverCoord, initialStatus);
     }
 
     stopTracking();
@@ -1075,23 +1103,36 @@
       if (fetchErr){ console.error('Order poll failed: ' + fetchErr.message); return; }
       applyOrderStatus(order.status);
 
-      if (order.driver_lat && order.driver_lng && cuMap){
+      const driverPos = (order.driver_lat && order.driver_lng) ? { lat: order.driver_lat, lng: order.driver_lng } : null;
+      if (driverPos && cuMap){
         if (!cuDriverMarker){
-          cuDriverMarker = L.circleMarker([order.driver_lat, order.driver_lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
+          cuDriverMarker = L.circleMarker([driverPos.lat, driverPos.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#4C9FE8', fillOpacity: 1 })
             .addTo(cuMap).bindPopup('Your gopher');
         } else {
-          cuDriverMarker.setLatLng([order.driver_lat, order.driver_lng]);
+          cuDriverMarker.setLatLng([driverPos.lat, driverPos.lng]);
         }
       }
+      updateEta(driverPos, order.status);
       if (order.status === 'delivered') stopTracking();
     }, 3000);
+  }
+
+  // ETA counts down to the pickup point while the driver is fetching the item,
+  // then switches to counting down to the drop-off once it's picked up.
+  function updateEta(driverPos, status){
+    if (status === 'delivered'){
+      document.getElementById('cu-eta').textContent = '0';
+      return;
+    }
+    const target = status === 'picked_up' ? cuDropoffCoord : cuPickupCoord;
+    const mins = estimateEtaMinutes(driverPos, target);
+    document.getElementById('cu-eta').textContent = mins !== null ? mins : '—';
   }
 
   function applyOrderStatus(status){
     const s = STATUS_MAP[status] || STATUS_MAP.pending;
     setTunnelProgress('cu', s.pct);
     document.getElementById('cu-status').textContent = s.label;
-    document.getElementById('cu-eta').textContent = status === 'delivered' ? '0' : '—';
   }
 
   function stopTracking(){
