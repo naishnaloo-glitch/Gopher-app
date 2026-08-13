@@ -260,6 +260,42 @@
 
   .empty-state{ text-align:center; padding:40px 10px; color:var(--chalk-dim); font-size:13px; }
 
+  /* ---------- Address autocomplete dropdown ---------- */
+  .addr-suggestions{
+    position:absolute;
+    top:100%; left:0; right:0;
+    margin-top:4px;
+    background:var(--loam);
+    border:1px solid var(--loam-light);
+    border-radius:12px;
+    overflow:hidden;
+    z-index:30;
+    box-shadow:0 8px 20px rgba(0,0,0,0.35);
+    display:none;
+  }
+  .addr-suggestions.show{ display:block; }
+  .addr-suggestion{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:11px 14px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    color:var(--chalk);
+    cursor:pointer;
+    border-bottom:1px solid var(--loam-light);
+  }
+  .addr-suggestion:last-child{ border-bottom:none; }
+  .addr-suggestion:hover, .addr-suggestion.active{ background:var(--moss); color:var(--soil-deep); }
+  .addr-suggestion .pin{ flex-shrink:0; color:var(--amber); }
+  .addr-suggestion:hover .pin, .addr-suggestion.active .pin{ color:var(--soil-deep); }
+  .addr-suggestion-loading{
+    padding:11px 14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--chalk-dim);
+  }
+
   /* ---------- Toast ---------- */
   .toast{
     position:fixed;
@@ -442,13 +478,15 @@
       <label>What do you need picked up</label>
       <input id="cu-item" type="text" placeholder="e.g. Forgotten gym bag" />
     </div>
-    <div class="field">
+    <div class="field" style="position:relative;">
       <label>Pickup from</label>
-      <input id="cu-pickup" type="text" placeholder="e.g. 14 Birchwood Ave" />
+      <input id="cu-pickup" type="text" placeholder="e.g. 14 Birchwood Ave" autocomplete="off" oninput="onAddressInput('cu-pickup')" />
+      <div id="cu-pickup-suggestions" class="addr-suggestions"></div>
     </div>
-    <div class="field">
+    <div class="field" style="position:relative;">
       <label>Deliver to</label>
-      <input id="cu-dropoff" type="text" placeholder="e.g. 220 Main St, Apt 4" />
+      <input id="cu-dropoff" type="text" placeholder="e.g. 220 Main St, Apt 4" autocomplete="off" oninput="onAddressInput('cu-dropoff')" />
+      <div id="cu-dropoff-suggestions" class="addr-suggestions"></div>
     </div>
     <div class="field">
       <label>Estimated item cost (R)</label>
@@ -783,6 +821,69 @@
     return null;
   }
 
+  // ---------- Address autocomplete ----------
+  const addressDebounce = {};   // per-field debounce timers
+  const selectedCoords = {};    // per-field: { lat, lng } once a suggestion is picked
+
+  function onAddressInput(fieldId){
+    selectedCoords[fieldId] = null; // typing invalidates any previously picked suggestion
+    clearTimeout(addressDebounce[fieldId]);
+    const query = document.getElementById(fieldId).value.trim();
+    const box = document.getElementById(fieldId + '-suggestions');
+
+    if (query.length < 3){ box.classList.remove('show'); box.innerHTML = ''; return; }
+
+    box.innerHTML = `<div class="addr-suggestion-loading">Searching…</div>`;
+    box.classList.add('show');
+
+    addressDebounce[fieldId] = setTimeout(() => fetchAddressSuggestions(fieldId, query), 400);
+  }
+
+  async function fetchAddressSuggestions(fieldId, query){
+    const box = document.getElementById(fieldId + '-suggestions');
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=0&countrycodes=za&q=' + encodeURIComponent(query));
+      const results = await res.json();
+
+      // Guard against the input having changed again while this request was in flight
+      if (document.getElementById(fieldId).value.trim() !== query) return;
+
+      if (!results || results.length === 0){
+        box.innerHTML = `<div class="addr-suggestion-loading">No matches found</div>`;
+        return;
+      }
+      box.innerHTML = results.map((r, i) => `
+        <div class="addr-suggestion" onmousedown="selectAddress('${fieldId}', ${i})">
+          <span class="pin">📍</span><span>${r.display_name}</span>
+        </div>
+      `).join('');
+      box.dataset.results = JSON.stringify(results.map(r => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) })));
+    } catch(e){
+      console.error('Address search failed: ' + e.message);
+      box.innerHTML = `<div class="addr-suggestion-loading">Search failed</div>`;
+    }
+  }
+
+  function selectAddress(fieldId, index){
+    const box = document.getElementById(fieldId + '-suggestions');
+    const results = JSON.parse(box.dataset.results || '[]');
+    const picked = results[index];
+    if (!picked) return;
+
+    document.getElementById(fieldId).value = picked.name;
+    selectedCoords[fieldId] = { lat: picked.lat, lng: picked.lng };
+    box.classList.remove('show');
+    box.innerHTML = '';
+  }
+
+  // Close any open dropdown when tapping elsewhere
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.addr-suggestions.show').forEach(box => {
+      const input = document.getElementById(box.id.replace('-suggestions', ''));
+      if (e.target !== input && !box.contains(e.target)) box.classList.remove('show');
+    });
+  });
+
   async function getQuote(){
     const item = document.getElementById('cu-item').value.trim();
     const pickup = document.getElementById('cu-pickup').value.trim();
@@ -801,8 +902,16 @@
 
     showScreen('screen-customer-quote');
 
-    // Geocode in the background so coordinates are ready by the time payAndTrack runs
-    const [pickupCoord, dropoffCoord] = await Promise.all([geocodeAddress(pickup), geocodeAddress(dropoff)]);
+    // Use the coordinates from a picked suggestion if we have them — skips a redundant geocode call
+    if (selectedCoords['cu-pickup'] && selectedCoords['cu-dropoff']){
+      currentQuote.pickupCoord = selectedCoords['cu-pickup'];
+      currentQuote.dropoffCoord = selectedCoords['cu-dropoff'];
+      return;
+    }
+    const [pickupCoord, dropoffCoord] = await Promise.all([
+      selectedCoords['cu-pickup'] ? Promise.resolve(selectedCoords['cu-pickup']) : geocodeAddress(pickup),
+      selectedCoords['cu-dropoff'] ? Promise.resolve(selectedCoords['cu-dropoff']) : geocodeAddress(dropoff)
+    ]);
     currentQuote.pickupCoord = pickupCoord;
     currentQuote.dropoffCoord = dropoffCoord;
   }
@@ -966,6 +1075,8 @@
     if (pickup) pickup.value = '';
     if (dropoff) dropoff.value = '';
     if (itemCost) itemCost.value = '';
+    selectedCoords['cu-pickup'] = null;
+    selectedCoords['cu-dropoff'] = null;
     currentQuote = null;
     showScreen('screen-customer-request');
   }
