@@ -842,22 +842,38 @@
   async function fetchAddressSuggestions(fieldId, query){
     const box = document.getElementById(fieldId + '-suggestions');
     try{
-      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=0&countrycodes=za&q=' + encodeURIComponent(query));
-      const results = await res.json();
+      // Photon (by komoot) is built for typeahead/autocomplete, unlike Nominatim's search endpoint
+      const res = await fetch('https://photon.komoot.io/api/?limit=5&lang=en&q=' + encodeURIComponent(query + ', South Africa'));
+      const geo = await res.json();
 
       // Guard against the input having changed again while this request was in flight
       if (document.getElementById(fieldId).value.trim() !== query) return;
 
-      if (!results || results.length === 0){
+      const features = (geo && geo.features) || [];
+      if (features.length === 0){
         box.innerHTML = `<div class="addr-suggestion-loading">No matches found</div>`;
         return;
       }
+
+      const results = features.map(f => {
+        const p = f.properties || {};
+        const line1 = [p.housenumber, p.street || p.name].filter(Boolean).join(' ');
+        const rest = [p.city || p.district, p.state, p.country].filter(Boolean);
+        return {
+          name: [line1, ...rest].filter(Boolean).join(', '),
+          hasHouseNumber: !!p.housenumber,
+          lat: f.geometry.coordinates[1],
+          lng: f.geometry.coordinates[0]
+        };
+      });
+
       box.innerHTML = results.map((r, i) => `
         <div class="addr-suggestion" onmousedown="selectAddress('${fieldId}', ${i})">
-          <span class="pin">📍</span><span>${r.display_name}</span>
+          <span class="pin">📍</span><span>${r.name}</span>
         </div>
       `).join('');
-      box.dataset.results = JSON.stringify(results.map(r => ({ name: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) })));
+      box.dataset.results = JSON.stringify(results);
+      box.dataset.typedQuery = query;
     } catch(e){
       console.error('Address search failed: ' + e.message);
       box.innerHTML = `<div class="addr-suggestion-loading">Search failed</div>`;
@@ -870,7 +886,19 @@
     const picked = results[index];
     if (!picked) return;
 
-    document.getElementById(fieldId).value = picked.name;
+    let finalName = picked.name;
+
+    // Safety net: if the suggestion has no house number but the user typed one
+    // (common gap in South African OSM data), keep the number they typed.
+    if (!picked.hasHouseNumber){
+      const typed = box.dataset.typedQuery || '';
+      const numberMatch = typed.match(/^(\d+[a-zA-Z]?)\b/);
+      if (numberMatch && !picked.name.startsWith(numberMatch[1])){
+        finalName = numberMatch[1] + ' ' + picked.name;
+      }
+    }
+
+    document.getElementById(fieldId).value = finalName;
     selectedCoords[fieldId] = { lat: picked.lat, lng: picked.lng };
     box.classList.remove('show');
     box.innerHTML = '';
