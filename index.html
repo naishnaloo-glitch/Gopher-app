@@ -506,6 +506,7 @@
     <button class="menu-item" onclick="openDoc('terms')">📄 Terms of Service</button>
     <button class="menu-item" onclick="openDoc('help')">💬 Help &amp; Support</button>
     <button class="menu-item" onclick="openDoc('about')">ℹ️ About Gopher</button>
+    <button class="menu-item" id="menu-push-item" onclick="enablePushNotifications()">🔕 Enable notifications</button>
     <div class="menu-divider"></div>
     <button class="menu-item menu-item-danger" onclick="closeMenu(); logOut();">🚪 Log out</button>
   </div>
@@ -799,6 +800,7 @@
   const SUPABASE_URL = 'https://pgskgpcqyiljhmglmzfv.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_CkI8aFzF22eempw3riEYGA_J8whzMBE';
   const PAYSTACK_PUBLIC_KEY = 'pk_test_8bf5b75452f637e70dc2312a133a39534b2c8328';
+  const VAPID_PUBLIC_KEY = 'BHvt-v9CvYsRZITSc-G5vLtXSOjVXjfwRW5fLM4Wzrn69Uu1U7bQ7xHeWneaCHWzq49jCHkW9ghZpN6i80MkgaE';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let selectedRole = 'customer';
@@ -854,6 +856,94 @@
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // In-app notification: toast + a short vibration where supported (Android Chrome; silently
+  // does nothing on iOS Safari, which doesn't support the Vibration API).
+  function notify(msg){
+    if (!msg) return;
+    showToast(msg);
+    try{ navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch(e){}
+  }
+
+  let lastKnownStatus = null;
+  const CUSTOMER_STATUS_ALERTS = {
+    accepted: '🧑‍💼 A gopher accepted your order!',
+    picked_up: '📦 Order collected — on the way to you',
+    delivered: '✅ Order delivered!'
+  };
+
+  // ---------- Real push notifications (work even with the app closed) ----------
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  let pushEnabled = false;
+
+  async function enablePushNotifications(){
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)){
+      showToast('Push notifications aren\'t supported on this browser');
+      return;
+    }
+    try{
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted'){
+        showToast('Notification permission was not granted');
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+
+      const subJson = subscription.toJSON();
+      const { error } = await sb.from('push_subscriptions').upsert({
+        user_id: currentUser.id,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth
+      }, { onConflict: 'endpoint' });
+
+      if (error){ console.error('Saving push subscription failed: ' + error.message); return; }
+
+      pushEnabled = true;
+      updatePushMenuLabel();
+      showToast('🔔 Notifications enabled!');
+    } catch(err){
+      console.error('Push subscription failed: ' + err.message);
+      showToast('Could not enable notifications');
+    }
+  }
+
+  async function checkPushStatus(){
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try{
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      pushEnabled = !!sub;
+      updatePushMenuLabel();
+    } catch(e){ /* ignore */ }
+  }
+
+  function updatePushMenuLabel(){
+    const el = document.getElementById('menu-push-item');
+    if (el) el.textContent = pushEnabled ? '🔔 Notifications on' : '🔕 Enable notifications';
+  }
+
+  // Fires a real push via the backend — used for events that matter even if the app is closed
+  async function sendPush(target, userId, title, body){
+    try{
+      await fetch('/api/send-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, userId, title, body })
+      });
+    } catch(e){ console.error('Push send failed: ' + e.message); }
   }
 
   async function doAuth(){
@@ -925,6 +1015,7 @@
     const role = profile ? profile.role : selectedRole;
 
     document.getElementById('menu-toggle').style.display = 'flex';
+    checkPushStatus();
 
     if (role === 'driver'){
       renderDriverOrders();
@@ -938,6 +1029,7 @@
     stopTracking();
     stopLocationSharing();
     clearInterval(driverListInterval);
+    knownPendingOrderIds = null;
     resetCustomer();
     await sb.auth.signOut();
     currentUser = null;
@@ -1275,7 +1367,8 @@
         console.error('Payment verification failed: ' + (result.error || 'unknown error'));
         return;
       }
-      showToast('Payment confirmed! 🎉');
+      notify('✅ Order placed! Payment confirmed 🎉');
+      sendPush('drivers', null, 'New order available', currentQuote ? currentQuote.item : 'A new delivery request just came in');
       startTrackingOrder(orderId, pickupCoord, dropoffCoord, 'pending', null);
     } catch(err){
       console.error('Verification request failed: ' + err.message);
@@ -1289,6 +1382,7 @@
     activeOrderId = orderId;
     cuPickupCoord = pickupCoord;
     cuDropoffCoord = dropoffCoord;
+    lastKnownStatus = initialStatus;
     showScreen('screen-customer-tracking');
     applyOrderStatus(initialStatus);
     cuDriverMarker = null;
@@ -1310,6 +1404,11 @@
         .eq('id', activeOrderId)
         .single();
       if (fetchErr){ console.error('Order poll failed: ' + fetchErr.message); return; }
+
+      if (order.status !== lastKnownStatus){
+        notify(CUSTOMER_STATUS_ALERTS[order.status] || null);
+        lastKnownStatus = order.status;
+      }
       applyOrderStatus(order.status);
 
       const driverPos = (order.driver_lat && order.driver_lng) ? { lat: order.driver_lat, lng: order.driver_lng } : null;
@@ -1424,6 +1523,7 @@
   let activeOrder = null;
   let driverStage = 'accepted';
   let driverListInterval = null;
+  let knownPendingOrderIds = null; // null = first load this session, don't alert retroactively
 
   async function renderDriverOrders(){
     const { data: orders, error } = await sb
@@ -1439,6 +1539,15 @@
       list.innerHTML = `<div class="empty-state">Couldn't load runs. Check the debug panel.</div>`;
       return;
     }
+
+    const currentIds = new Set((orders || []).map(o => o.id));
+    if (knownPendingOrderIds){
+      const newOnes = (orders || []).filter(o => !knownPendingOrderIds.has(o.id));
+      if (newOnes.length === 1) notify('📦 New order available: ' + newOnes[0].item);
+      else if (newOnes.length > 1) notify(`📦 ${newOnes.length} new orders available`);
+    }
+    knownPendingOrderIds = currentIds;
+
     if (!orders || orders.length === 0){
       list.innerHTML = `<div class="empty-state">No runs available right now.<br/>Check back soon.</div>`;
       return;
@@ -1476,6 +1585,7 @@
     clearInterval(driverListInterval);
     openRunScreen(data);
     startLocationSharing();
+    sendPush('user', data.customer_id, 'A gopher accepted your order!', data.item + ' is being picked up soon');
   }
 
   // Shared setup for showing the navigate screen, whether just accepted or reopened from history
@@ -1627,6 +1737,11 @@
     driverStage = nextStatus;
     updateDriverStageUI();
     if (nextStatus === 'delivered') stopLocationSharing();
+
+    const pushMsg = nextStatus === 'picked_up'
+      ? ['Order collected', activeOrder.item + ' is on the way to you']
+      : ['Order delivered!', activeOrder.item + ' has arrived'];
+    sendPush('user', activeOrder.customer_id, pushMsg[0], pushMsg[1]);
   }
 
   function backToRuns(){
