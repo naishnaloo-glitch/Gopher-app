@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-<script src="https://js.paystack.co/v1/inline.js" crossorigin="anonymous"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
 <style>
   :root{
     --soil:#132238;
@@ -979,6 +979,26 @@
     return Math.max(1, Math.round(km / AVG_SPEED_KMH * 60));
   }
 
+  // Draws the actual road route (via OSRM's free public routing service).
+  // Runs after the map is already visible, so a slow/failed lookup never blocks the map itself.
+  async function drawRoute(map, pickupCoord, dropoffCoord){
+    try{
+      const url = `https://router.project-osrm.org/route/v1/driving/${pickupCoord.lng},${pickupCoord.lat};${dropoffCoord.lng},${dropoffCoord.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.routes || !data.routes[0]) throw new Error('No route found');
+
+      const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] -> [lat,lng]
+      L.polyline(coords, { color: '#4C9FE8', weight: 4, opacity: 0.85 }).addTo(map);
+      map.fitBounds(coords, { padding: [30, 30] });
+    } catch(e){
+      console.error('Road routing failed, falling back to a straight line: ' + e.message);
+      L.polyline([[pickupCoord.lat, pickupCoord.lng], [dropoffCoord.lat, dropoffCoord.lng]], {
+        color: '#4C9FE8', weight: 4, opacity: 0.6, dashArray: '6 8'
+      }).addTo(map);
+    }
+  }
+
   function initMap(containerId, pickupCoord, dropoffCoord){
     const el = document.getElementById(containerId);
     el.innerHTML = ''; // clear any previous map instance
@@ -990,11 +1010,6 @@
     }).addTo(map);
 
     const bounds = [];
-    if (pickupCoord && dropoffCoord){
-      L.polyline([[pickupCoord.lat, pickupCoord.lng], [dropoffCoord.lat, dropoffCoord.lng]], {
-        color: '#4C9FE8', weight: 4, opacity: 0.8
-      }).addTo(map);
-    }
     if (pickupCoord){
       L.circleMarker([pickupCoord.lat, pickupCoord.lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#F2B705', fillOpacity: 1 })
         .addTo(map).bindPopup('Pickup');
@@ -1006,6 +1021,7 @@
       bounds.push([dropoffCoord.lat, dropoffCoord.lng]);
     }
     if (bounds.length === 2) map.fitBounds(bounds, { padding: [30, 30] });
+    if (pickupCoord && dropoffCoord) drawRoute(map, pickupCoord, dropoffCoord);
 
     // Fixes the classic Leaflet "blank grey box" bug: if the container was still
     // display:none (mid screen-transition) when the map measured itself, it gets
@@ -1350,7 +1366,10 @@
           }
         }
       },
-      (err) => console.error('Location error: ' + err.message),
+      (err) => {
+        console.error('Location error: ' + err.message);
+        showToast('⚠️ Location permission needed to share your position');
+      },
       { enableHighAccuracy: true, maximumAge: 5000 }
     );
 
