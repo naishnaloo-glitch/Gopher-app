@@ -8,6 +8,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing reference or orderId' });
   }
 
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    return res.status(500).json({ error: 'PAYSTACK_SECRET_KEY is not set on the server — check Vercel Environment Variables and redeploy.' });
+  }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: 'Supabase server env vars are missing — check Vercel Environment Variables and redeploy.' });
+  }
+
   try {
     // 1. Ask Paystack directly whether this payment really succeeded.
     //    This uses the SECRET key — only ever runs on the server, never in the browser.
@@ -18,7 +25,8 @@ export default async function handler(req, res) {
     const paystackData = await paystackRes.json();
 
     if (!paystackData.status || paystackData.data.status !== 'success') {
-      return res.status(400).json({ error: 'Payment was not successful' });
+      const detail = paystackData.message || (paystackData.data && paystackData.data.gateway_response) || 'Unknown reason';
+      return res.status(400).json({ error: 'Paystack says: ' + detail });
     }
 
     // Defends against a tampered amount being sent from the client
