@@ -296,6 +296,30 @@
     color:var(--chalk-dim);
   }
 
+  /* ---------- Address type toggle (house / complex / building) ---------- */
+  .addr-type-toggle{
+    display:flex;
+    gap:6px;
+    margin-top:8px;
+  }
+  .addr-type-btn{
+    flex:1;
+    padding:8px 6px;
+    border-radius:10px;
+    border:1px solid var(--loam-light);
+    background:var(--soil-deep);
+    color:var(--chalk-dim);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .addr-type-btn.active{
+    background:var(--moss);
+    color:var(--soil-deep);
+    border-color:var(--moss);
+  }
+
   /* ---------- Toast ---------- */
   .toast{
     position:fixed;
@@ -482,11 +506,23 @@
       <label>Pickup from</label>
       <input id="cu-pickup" type="text" placeholder="e.g. 14 Birchwood Ave" autocomplete="off" oninput="onAddressInput('cu-pickup')" />
       <div id="cu-pickup-suggestions" class="addr-suggestions"></div>
+      <div class="addr-type-toggle">
+        <button type="button" class="addr-type-btn active" id="cu-pickup-type-house" onclick="setAddressType('cu-pickup','house')">House</button>
+        <button type="button" class="addr-type-btn" id="cu-pickup-type-complex" onclick="setAddressType('cu-pickup','complex')">Complex</button>
+        <button type="button" class="addr-type-btn" id="cu-pickup-type-building" onclick="setAddressType('cu-pickup','building')">Building</button>
+      </div>
+      <input id="cu-pickup-unit" type="text" placeholder="Unit / apartment number" style="display:none; margin-top:8px;" />
     </div>
     <div class="field" style="position:relative;">
       <label>Deliver to</label>
       <input id="cu-dropoff" type="text" placeholder="e.g. 220 Main St, Apt 4" autocomplete="off" oninput="onAddressInput('cu-dropoff')" />
       <div id="cu-dropoff-suggestions" class="addr-suggestions"></div>
+      <div class="addr-type-toggle">
+        <button type="button" class="addr-type-btn active" id="cu-dropoff-type-house" onclick="setAddressType('cu-dropoff','house')">House</button>
+        <button type="button" class="addr-type-btn" id="cu-dropoff-type-complex" onclick="setAddressType('cu-dropoff','complex')">Complex</button>
+        <button type="button" class="addr-type-btn" id="cu-dropoff-type-building" onclick="setAddressType('cu-dropoff','building')">Building</button>
+      </div>
+      <input id="cu-dropoff-unit" type="text" placeholder="Unit / apartment number" style="display:none; margin-top:8px;" />
     </div>
     <div class="field">
       <label>Estimated item cost (R)</label>
@@ -912,11 +948,41 @@
     });
   });
 
+  // ---------- Address type (house / complex / building) ----------
+  const addressType = { 'cu-pickup': 'house', 'cu-dropoff': 'house' };
+
+  function setAddressType(fieldId, type){
+    addressType[fieldId] = type;
+    ['house', 'complex', 'building'].forEach(t => {
+      document.getElementById(fieldId + '-type-' + t).classList.toggle('active', t === type);
+    });
+    const unitInput = document.getElementById(fieldId + '-unit');
+    unitInput.style.display = (type === 'house') ? 'none' : 'block';
+    if (type === 'house') unitInput.value = '';
+  }
+
+  function buildFullAddress(fieldId){
+    const base = document.getElementById(fieldId).value.trim();
+    const type = addressType[fieldId];
+    if (type === 'house') return base;
+    const unit = document.getElementById(fieldId + '-unit').value.trim();
+    return unit ? `Unit ${unit}, ${base}` : base;
+  }
+
   async function getQuote(){
     const item = document.getElementById('cu-item').value.trim();
-    const pickup = document.getElementById('cu-pickup').value.trim();
-    const dropoff = document.getElementById('cu-dropoff').value.trim();
     const itemCost = parseFloat(document.getElementById('cu-item-cost').value);
+
+    // If complex/building was picked, a unit number is required to actually find the address
+    for (const fieldId of ['cu-pickup', 'cu-dropoff']){
+      if (addressType[fieldId] !== 'house' && !document.getElementById(fieldId + '-unit').value.trim()){
+        document.getElementById(fieldId + '-unit').focus();
+        return;
+      }
+    }
+
+    const pickup = buildFullAddress('cu-pickup');
+    const dropoff = buildFullAddress('cu-dropoff');
     if (!item || !pickup || !dropoff || isNaN(itemCost) || itemCost < 0) return;
 
     currentQuote = { item, pickup, dropoff, ...computeQuote(itemCost) };
@@ -1168,6 +1234,8 @@
     if (itemCost) itemCost.value = '';
     selectedCoords['cu-pickup'] = null;
     selectedCoords['cu-dropoff'] = null;
+    setAddressType('cu-pickup', 'house');
+    setAddressType('cu-dropoff', 'house');
     currentQuote = null;
     showScreen('screen-customer-request');
   }
