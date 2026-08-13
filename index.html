@@ -320,6 +320,74 @@
     border-color:var(--moss);
   }
 
+  /* ---------- Hamburger menu ---------- */
+  #menu-toggle{
+    position:fixed;
+    top:18px; left:18px;
+    z-index:60;
+    width:40px; height:40px;
+    border-radius:12px;
+    background:var(--loam);
+    border:1px solid var(--loam-light);
+    color:var(--chalk);
+    font-size:18px;
+    cursor:pointer;
+    align-items:center;
+    justify-content:center;
+  }
+  #menu-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    z-index:70;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  #menu-backdrop.show{ opacity:1; pointer-events:auto; }
+  #menu-drawer{
+    position:fixed;
+    top:0; bottom:0; left:0;
+    width:82%; max-width:320px;
+    background:var(--soil);
+    border-right:1px solid var(--loam-light);
+    z-index:80;
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    display:flex;
+    flex-direction:column;
+    padding:20px 0;
+  }
+  #menu-drawer.show{ transform:translateX(0); }
+  .menu-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px 18px;
+    border-bottom:1px solid var(--loam-light);
+    margin-bottom:10px;
+  }
+  #menu-close{
+    background:none; border:none; color:var(--chalk-dim);
+    font-size:16px; cursor:pointer;
+  }
+  .menu-items{ display:flex; flex-direction:column; padding:6px 10px; }
+  .menu-item{
+    text-align:left;
+    background:none; border:none;
+    color:var(--chalk);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    padding:13px 10px;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  .menu-item:hover{ background:var(--loam); }
+  .menu-item-danger{ color:var(--rust); }
+  .menu-divider{ height:1px; background:var(--loam-light); margin:10px 4px; }
+
+  .doc-body{ font-size:13.5px; line-height:1.6; color:var(--chalk-dim); }
+  .doc-body h3{ color:var(--chalk); font-size:14px; margin:18px 0 6px; font-family:'Space Grotesk', sans-serif; }
+  .doc-body p, .doc-body li{ margin-bottom:8px; }
+  .doc-body ul{ padding-left:18px; }
+
   /* ---------- Toast ---------- */
   .toast{
     position:fixed;
@@ -411,6 +479,25 @@
   window.addEventListener('unhandledrejection', (e) => pushDebug('error', ['Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)]));
   pushDebug('log', ['Debug panel ready']);
 </script>
+<button id="menu-toggle" onclick="openMenu()" style="display:none;">☰</button>
+<div id="menu-backdrop" onclick="closeMenu()"></div>
+<div id="menu-drawer">
+  <div class="menu-header">
+    <span style="font-family:'Fraunces', serif; font-weight:600; font-size:20px;">Gopher</span>
+    <button id="menu-close" onclick="closeMenu()">✕</button>
+  </div>
+  <div class="menu-items">
+    <button class="menu-item" onclick="openProfile()">👤 My Profile</button>
+    <button class="menu-item" onclick="openDoc('returns')">🔄 Returns &amp; Refunds</button>
+    <button class="menu-item" onclick="openDoc('privacy')">🔒 Privacy Policy</button>
+    <button class="menu-item" onclick="openDoc('terms')">📄 Terms of Service</button>
+    <button class="menu-item" onclick="openDoc('help')">💬 Help &amp; Support</button>
+    <button class="menu-item" onclick="openDoc('about')">ℹ️ About Gopher</button>
+    <div class="menu-divider"></div>
+    <button class="menu-item menu-item-danger" onclick="closeMenu(); logOut();">🚪 Log out</button>
+  </div>
+</div>
+
 <div class="stage">
   <div class="toast" id="toast"></div>
 
@@ -475,6 +562,20 @@
     </div>
 
     <div style="width:100%;">
+      <div id="signup-extra-fields" style="display:none;">
+        <div class="field">
+          <label>First name</label>
+          <input id="signup-first-name" type="text" placeholder="Jane" />
+        </div>
+        <div class="field">
+          <label>Last name</label>
+          <input id="signup-last-name" type="text" placeholder="Dlamini" />
+        </div>
+        <div class="field">
+          <label>Cell number</label>
+          <input id="signup-phone" type="tel" placeholder="082 123 4567" />
+        </div>
+      </div>
       <div class="field">
         <label>Email</label>
         <input id="login-email" type="email" placeholder="you@example.com" />
@@ -659,6 +760,25 @@
     <div id="dr-actions" style="width:100%;"></div>
   </div>
 
+  <!-- ============ PROFILE ============ -->
+  <div class="screen" id="screen-profile">
+    <div class="app-top">
+      <button class="back" onclick="closeProfile()">&larr; Back</button>
+      <span class="app-badge" id="profile-role-badge">customer</span>
+    </div>
+    <h1 class="h1" style="margin-bottom:18px;">My profile</h1>
+    <div id="profile-content" style="width:100%;"></div>
+  </div>
+
+  <!-- ============ POLICY / INFO DOC ============ -->
+  <div class="screen" id="screen-doc">
+    <div class="app-top">
+      <button class="back" onclick="closeDoc()">&larr; Back</button>
+    </div>
+    <h1 class="h1" id="doc-title" style="margin-bottom:16px;"></h1>
+    <div class="doc-body" id="doc-body" style="width:100%;"></div>
+  </div>
+
 </div>
 
 <script>
@@ -703,6 +823,7 @@
     document.getElementById('auth-submit').textContent = mode === 'signup' ? 'Sign up' : 'Log in';
     document.getElementById('tab-signin').className = 'btn ' + (mode === 'signin' ? 'btn-tab-active' : 'btn-tab-inactive');
     document.getElementById('tab-signup').className = 'btn ' + (mode === 'signup' ? 'btn-tab-active' : 'btn-tab-inactive');
+    document.getElementById('signup-extra-fields').style.display = (mode === 'signup') ? 'block' : 'none';
     hideAuthError();
   }
 
@@ -728,6 +849,17 @@
     const password = document.getElementById('login-password').value;
     if (!email || !password){ showAuthError('Enter an email and password.'); return; }
 
+    let firstName = '', lastName = '', phone = '';
+    if (authMode === 'signup'){
+      firstName = document.getElementById('signup-first-name').value.trim();
+      lastName = document.getElementById('signup-last-name').value.trim();
+      phone = document.getElementById('signup-phone').value.trim();
+      if (!firstName || !lastName || !phone){
+        showAuthError('First name, last name, and cell number are all required.');
+        return;
+      }
+    }
+
     console.log('Attempting ' + authMode + ' for ' + email);
     const btn = document.getElementById('auth-submit');
     btn.disabled = true;
@@ -737,7 +869,7 @@
       if (authMode === 'signup'){
         const { data, error } = await sb.auth.signUp({
           email, password,
-          options: { data: { role: selectedRole } }
+          options: { data: { role: selectedRole, first_name: firstName, last_name: lastName, phone: phone } }
         });
         if (error) throw error;
         console.log('Signup response received, session present: ' + !!data.session);
@@ -765,27 +897,6 @@
     }
   }
 
-  async function routeAfterAuth(){
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user){ showScreen('screen-role'); return; }
-
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (error) console.error('Profile lookup error:', error);
-    const role = profile ? profile.role : selectedRole;
-
-    if (role === 'driver'){
-      renderDriverOrders();
-      showScreen('screen-driver-orders');
-    } else {
-      showScreen('screen-customer-request');
-    }
-  }
-
   // Route based on the REAL role stored in the database, not just the button picked
   async function routeAfterAuth(){
     const { data: { user } } = await sb.auth.getUser();
@@ -799,6 +910,8 @@
 
     if (error) console.error('Profile lookup error:', error);
     const role = profile ? profile.role : selectedRole;
+
+    document.getElementById('menu-toggle').style.display = 'flex';
 
     if (role === 'driver'){
       renderDriverOrders();
@@ -815,6 +928,7 @@
     resetCustomer();
     await sb.auth.signOut();
     currentUser = null;
+    document.getElementById('menu-toggle').style.display = 'none';
     showScreen('screen-role');
   }
 
@@ -1507,6 +1621,159 @@
     activeOrder = null;
     renderDriverOrders();
     showScreen('screen-driver-orders');
+  }
+
+  // ---------- Hamburger menu ----------
+  let screenBeforeMenu = null;
+
+  function getActiveScreenId(){
+    const el = document.querySelector('.screen.active');
+    return el ? el.id : 'screen-role';
+  }
+
+  function openMenu(){
+    document.getElementById('menu-drawer').classList.add('show');
+    document.getElementById('menu-backdrop').classList.add('show');
+  }
+  function closeMenu(){
+    document.getElementById('menu-drawer').classList.remove('show');
+    document.getElementById('menu-backdrop').classList.remove('show');
+  }
+
+  // ---------- Profile ----------
+  async function openProfile(){
+    screenBeforeMenu = getActiveScreenId();
+    closeMenu();
+    showScreen('screen-profile');
+    document.getElementById('profile-role-badge').textContent = selectedRole;
+    const content = document.getElementById('profile-content');
+    content.innerHTML = `<div class="empty-state">Loading…</div>`;
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('first_name, last_name, email, phone, role')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error){
+      console.error('Failed to load profile: ' + error.message);
+      content.innerHTML = `<div class="empty-state">Couldn't load your profile.</div>`;
+      return;
+    }
+
+    const rows = [
+      ['First name', profile.first_name || 'Not provided'],
+      ['Last name', profile.last_name || 'Not provided'],
+      ['Email', profile.email || currentUser.email],
+      ['Cell number', profile.phone || 'Not provided'],
+      ['Account type', profile.role],
+    ];
+    content.innerHTML = `
+      <div class="card">
+        ${rows.map(([label, val]) => `
+          <div class="quote-line" style="border-bottom:1px solid var(--loam-light); padding:10px 0;">
+            <span class="dim mono" style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em;">${label}</span><br/>
+            <span style="font-size:14px;">${val}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function closeProfile(){
+    showScreen(screenBeforeMenu || 'screen-role');
+  }
+
+  // ---------- Policy / info docs ----------
+  const POLICIES = {
+    returns: {
+      title: 'Returns & Refunds',
+      body: `
+        <p>Gopher is a pickup-and-delivery service — we don't sell the items you request, so "returns" work a little differently than a typical store.</p>
+        <h3>Cancelling a request</h3>
+        <ul>
+          <li>Cancelled before a gopher accepts: full refund of delivery and shopping fees.</li>
+          <li>Cancelled after acceptance but before pickup: may incur a partial fee to cover the gopher's time.</li>
+          <li>Cancelled after the item has been picked up: generally non-refundable, since the run is already underway.</li>
+        </ul>
+        <h3>Item cost</h3>
+        <p>The item cost you enter is an estimate you provide and is passed through as-is — Gopher does not mark it up or take a cut of it. Any dispute about the price, quality, or condition of the item itself is between you and the shop/seller it came from.</p>
+        <h3>Damaged or lost items</h3>
+        <p>Gophers take reasonable care with every delivery. If an item is damaged or lost in transit, contact us with your order number and we'll investigate — reimbursement, where applicable, is generally limited to the declared item cost.</p>
+        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional before relying on it for a public launch.</p>
+      `
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      body: `
+        <p>Gopher collects the minimum information needed to run the service, in line with South Africa's Protection of Personal Information Act (POPIA).</p>
+        <h3>What we collect</h3>
+        <ul>
+          <li>Name, email, and cell number when you create an account</li>
+          <li>Pickup/drop-off addresses and item details for each request</li>
+          <li>Live GPS location, only from drivers, only while a run is active</li>
+          <li>Payment confirmation from Paystack — Gopher never sees or stores your card details</li>
+        </ul>
+        <h3>Why we collect it</h3>
+        <p>Solely to create your account, generate quotes, match requests with drivers, process payment, and provide live tracking.</p>
+        <h3>Who we share it with</h3>
+        <p>Trusted service providers only: Supabase (database and accounts), Paystack (payments), and OpenStreetMap-based services (address lookup, routing). We don't sell your data to anyone.</p>
+        <h3>Your rights</h3>
+        <p>You can request access to, correction of, or deletion of your personal information at any time by contacting us.</p>
+        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional — particularly for POPIA compliance — before relying on it for a public launch.</p>
+      `
+    },
+    terms: {
+      title: 'Terms of Service',
+      body: `
+        <h3>Using Gopher</h3>
+        <p>By creating an account, you agree to provide accurate information and use the service lawfully. You must be legally able to enter into agreements in South Africa.</p>
+        <h3>Drivers ("Gophers")</h3>
+        <p>Drivers operate as independent contractors, not employees. Drivers are responsible for their own vehicle, licensing, and safe operation while making deliveries.</p>
+        <h3>Prohibited items</h3>
+        <p>Gopher may not be used to request delivery of anything illegal, hazardous, or requiring special licensing to transport — including weapons, illegal substances, and other regulated goods.</p>
+        <h3>Payments</h3>
+        <p>All payments are processed securely through Paystack. Quoted totals include a delivery fee and shopping fee in addition to the item cost you provide.</p>
+        <h3>Liability</h3>
+        <p>Gopher facilitates the connection between customers and drivers and takes reasonable care to verify payments and track deliveries, but is not liable for indirect or consequential losses arising from a delivery.</p>
+        <h3>Account termination</h3>
+        <p>Accounts may be suspended for fraudulent activity, abuse of other users, or violation of these terms.</p>
+        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional before relying on it for a public launch.</p>
+      `
+    },
+    help: {
+      title: 'Help & Support',
+      body: `
+        <p>Something not working, or got a question about an order?</p>
+        <h3>Contact us</h3>
+        <p>support@gopherapp.example<br/>Add your real support email or number here.</p>
+        <h3>Common questions</h3>
+        <p><strong>Where's my order?</strong> Check "My Orders" from this menu — every request updates live.</p>
+        <p><strong>My payment didn't go through.</strong> No charge is made unless Paystack confirms success — try again, or contact support with your order details.</p>
+        <p><strong>I'm a driver and want to sign up.</strong> Choose "I'm a driver" at signup — no separate approval step yet at this early stage.</p>
+      `
+    },
+    about: {
+      title: 'About Gopher',
+      body: `
+        <p><strong>We'll fetch it.</strong></p>
+        <p>Gopher is a pickup-and-delivery service for pretty much anything — not just food. Forgot something at home? Need a couch moved across town? Tell us what you need and where, get an instant quote, and a gopher takes care of the rest — with live tracking the whole way.</p>
+        <p>Built in South Africa, for South Africa.</p>
+      `
+    }
+  };
+
+  function openDoc(key){
+    screenBeforeMenu = getActiveScreenId();
+    closeMenu();
+    const doc = POLICIES[key];
+    document.getElementById('doc-title').textContent = doc.title;
+    document.getElementById('doc-body').innerHTML = doc.body;
+    showScreen('screen-doc');
+  }
+
+  function closeDoc(){
+    showScreen(screenBeforeMenu || 'screen-role');
   }
 
   // auto-advance from loading screen: skip to app if already logged in, else role select
