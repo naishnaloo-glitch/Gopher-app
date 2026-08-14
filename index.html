@@ -961,12 +961,18 @@
   // Fires a real push via the backend — used for events that matter even if the app is closed
   async function sendPush(target, userId, title, body){
     try{
-      await fetch('/api/send-push', {
+      const res = await fetch('/api/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target, userId, title, body })
       });
-    } catch(e){ console.error('Push send failed: ' + e.message); }
+      const result = await res.json();
+      if (!res.ok){
+        console.error('Push send failed: ' + (result.error || 'unknown server error'));
+      } else {
+        console.log(`Push send: ${result.sent}/${result.totalSubscriptions ?? 0} delivered`);
+      }
+    } catch(e){ console.error('Push send request failed: ' + e.message); }
   }
 
   async function doAuth(){
