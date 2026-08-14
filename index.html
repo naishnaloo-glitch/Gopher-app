@@ -506,7 +506,7 @@
     <button class="menu-item" onclick="openDoc('terms')">📄 Terms of Service</button>
     <button class="menu-item" onclick="openDoc('help')">💬 Help &amp; Support</button>
     <button class="menu-item" onclick="openDoc('about')">ℹ️ About Gopher</button>
-    <button class="menu-item" id="menu-push-item" onclick="enablePushNotifications()">🔕 Enable notifications</button>
+    <button class="menu-item" id="menu-push-item" onclick="togglePush()">🔕 Enable notifications</button>
     <div class="menu-divider"></div>
     <button class="menu-item menu-item-danger" onclick="closeMenu(); logOut();">🚪 Log out</button>
   </div>
@@ -882,6 +882,28 @@
   }
 
   let pushEnabled = false;
+
+  function togglePush(){
+    if (pushEnabled) disablePushNotifications();
+    else enablePushNotifications();
+  }
+
+  async function disablePushNotifications(){
+    try{
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      if (sub){
+        await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+        await sub.unsubscribe();
+      }
+      pushEnabled = false;
+      updatePushMenuLabel();
+      showToast('🔕 Notifications turned off');
+    } catch(err){
+      console.error('Disabling push failed: ' + err.message);
+      showToast('Could not disable notifications');
+    }
+  }
 
   async function enablePushNotifications(){
     if (!('serviceWorker' in navigator) || !('PushManager' in window)){
