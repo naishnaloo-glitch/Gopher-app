@@ -509,13 +509,9 @@
   </div>
   <div class="menu-items">
     <button class="menu-item" onclick="openProfile()">👤 My Profile</button>
-    <button class="menu-item" onclick="openDoc('returns')">🔄 Returns &amp; Refunds</button>
-    <button class="menu-item" onclick="openDoc('privacy')">🔒 Privacy Policy</button>
-    <button class="menu-item" onclick="openDoc('terms')">📄 Terms of Service</button>
     <button class="menu-item" onclick="openDoc('help')">💬 Help &amp; Support</button>
     <button class="menu-item" onclick="openDoc('about')">ℹ️ About Gopher</button>
     <button class="menu-item" id="menu-push-item" onclick="togglePush()">🔕 Enable notifications</button>
-    <button class="menu-item" id="menu-install-item" onclick="installApp()">📲 Install app</button>
     <div class="menu-divider"></div>
     <button class="menu-item menu-item-danger" onclick="closeMenu(); logOut();">🚪 Log out</button>
   </div>
@@ -665,6 +661,10 @@
       </p>
     </div>
     <button class="btn btn-primary" onclick="getQuote()">Get a quote</button>
+
+    <button class="btn" id="install-cta" onclick="installApp()" style="margin-top:24px; background:var(--amber); color:var(--soil-deep); font-weight:700;">
+      📲 Install Gopher as an app
+    </button>
   </div>
 
   <!-- ============ CUSTOMER: QUOTE ============ -->
@@ -917,6 +917,11 @@
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
+  function updateInstallCta(){
+    const btn = document.getElementById('install-cta');
+    if (btn) btn.style.display = isStandalone() ? 'none' : 'block';
+  }
+
   async function installApp(){
     if (isStandalone()){
       showToast('Gopher is already installed 🎉');
@@ -1096,6 +1101,7 @@
 
     document.getElementById('menu-toggle').style.display = 'flex';
     checkPushStatus();
+    updateInstallCta();
 
     if (role === 'driver'){
       renderDriverOrders();
@@ -1974,61 +1980,6 @@
 
   // ---------- Policy / info docs ----------
   const POLICIES = {
-    returns: {
-      title: 'Returns & Refunds',
-      body: `
-        <p>Gopher is a pickup-and-delivery service — we don't sell the items you request, so "returns" work a little differently than a typical store.</p>
-        <h3>Cancelling a request</h3>
-        <ul>
-          <li>Cancelled before a gopher accepts: full refund of delivery and shopping fees.</li>
-          <li>Cancelled after acceptance but before pickup: may incur a partial fee to cover the gopher's time.</li>
-          <li>Cancelled after the item has been picked up: generally non-refundable, since the run is already underway.</li>
-        </ul>
-        <h3>Item cost</h3>
-        <p>The item cost you enter is an estimate you provide and is passed through as-is — Gopher does not mark it up or take a cut of it. Any dispute about the price, quality, or condition of the item itself is between you and the shop/seller it came from.</p>
-        <h3>Damaged or lost items</h3>
-        <p>Gophers take reasonable care with every delivery. If an item is damaged or lost in transit, contact us with your order number and we'll investigate — reimbursement, where applicable, is generally limited to the declared item cost.</p>
-        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional before relying on it for a public launch.</p>
-      `
-    },
-    privacy: {
-      title: 'Privacy Policy',
-      body: `
-        <p>Gopher collects the minimum information needed to run the service, in line with South Africa's Protection of Personal Information Act (POPIA).</p>
-        <h3>What we collect</h3>
-        <ul>
-          <li>Name, email, and cell number when you create an account</li>
-          <li>Pickup/drop-off addresses and item details for each request</li>
-          <li>Live GPS location, only from drivers, only while a run is active</li>
-          <li>Payment confirmation from Paystack — Gopher never sees or stores your card details</li>
-        </ul>
-        <h3>Why we collect it</h3>
-        <p>Solely to create your account, generate quotes, match requests with drivers, process payment, and provide live tracking.</p>
-        <h3>Who we share it with</h3>
-        <p>Trusted service providers only: Supabase (database and accounts), Paystack (payments), and OpenStreetMap-based services (address lookup, routing). We don't sell your data to anyone.</p>
-        <h3>Your rights</h3>
-        <p>You can request access to, correction of, or deletion of your personal information at any time by contacting us.</p>
-        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional — particularly for POPIA compliance — before relying on it for a public launch.</p>
-      `
-    },
-    terms: {
-      title: 'Terms of Service',
-      body: `
-        <h3>Using Gopher</h3>
-        <p>By creating an account, you agree to provide accurate information and use the service lawfully. You must be legally able to enter into agreements in South Africa.</p>
-        <h3>Drivers ("Gophers")</h3>
-        <p>Drivers operate as independent contractors, not employees. Drivers are responsible for their own vehicle, licensing, and safe operation while making deliveries.</p>
-        <h3>Prohibited items</h3>
-        <p>Gopher may not be used to request delivery of anything illegal, hazardous, or requiring special licensing to transport — including weapons, illegal substances, and other regulated goods.</p>
-        <h3>Payments</h3>
-        <p>All payments are processed securely through Paystack. Quoted totals include a delivery fee and shopping fee in addition to the item cost you provide.</p>
-        <h3>Liability</h3>
-        <p>Gopher facilitates the connection between customers and drivers and takes reasonable care to verify payments and track deliveries, but is not liable for indirect or consequential losses arising from a delivery.</p>
-        <h3>Account termination</h3>
-        <p>Accounts may be suspended for fraudulent activity, abuse of other users, or violation of these terms.</p>
-        <p class="dim" style="font-size:12px; margin-top:16px;">This is a starting policy for a small, early-stage service. Have it reviewed by a legal professional before relying on it for a public launch.</p>
-      `
-    },
     help: {
       title: 'Help & Support',
       body: `
