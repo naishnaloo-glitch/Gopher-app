@@ -1,6 +1,11 @@
 import webpush from 'web-push';
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -60,7 +65,13 @@ export default async function handler(req, res) {
     const subs = await subsRes.json();
 
     let sent = 0;
-    const payload = JSON.stringify({ title, body, url: url || '/' });
+    const APP_ORIGIN = 'https://gopher-app-8cyk.vercel.app';
+    const payload = JSON.stringify({
+      title, body,
+      url: url || '/',
+      icon: `${APP_ORIGIN}/icons/icon-192.png`,
+      badge: `${APP_ORIGIN}/icons/icon-192.png`
+    });
 
     for (const sub of subs || []) {
       const subscription = {
