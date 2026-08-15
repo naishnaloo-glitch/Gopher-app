@@ -1006,6 +1006,20 @@
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       pushEnabled = !!sub;
       updatePushMenuLabel();
+
+      // A device's push subscription is shared across whichever account is logged in on it —
+      // re-claim it for the CURRENT user every login, so notifications always follow whoever
+      // is actually signed in right now, not whoever last enabled them on this device.
+      if (sub && currentUser){
+        const subJson = sub.toJSON();
+        const { error } = await sb.from('push_subscriptions').upsert({
+          user_id: currentUser.id,
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth
+        }, { onConflict: 'endpoint' });
+        if (error) console.error('Re-claiming push subscription failed: ' + error.message);
+      }
     } catch(e){ /* ignore */ }
   }
 
