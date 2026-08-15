@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>Gopher</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<meta name="theme-color" content="#0A1626" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Gopher" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
@@ -508,6 +515,7 @@
     <button class="menu-item" onclick="openDoc('help')">💬 Help &amp; Support</button>
     <button class="menu-item" onclick="openDoc('about')">ℹ️ About Gopher</button>
     <button class="menu-item" id="menu-push-item" onclick="togglePush()">🔕 Enable notifications</button>
+    <button class="menu-item" id="menu-install-item" onclick="installApp()">📲 Install app</button>
     <div class="menu-divider"></div>
     <button class="menu-item menu-item-danger" onclick="closeMenu(); logOut();">🚪 Log out</button>
   </div>
@@ -895,6 +903,33 @@
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const raw = atob(base64);
     return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  // ---------- Install as an app (PWA) ----------
+  let deferredInstallPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  async function installApp(){
+    if (isStandalone()){
+      showToast('Gopher is already installed 🎉');
+      return;
+    }
+    if (deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (outcome === 'accepted') showToast('Installing Gopher… 🎉');
+    } else {
+      openDoc('install');
+    }
   }
 
   let pushEnabled = false;
@@ -2012,6 +2047,25 @@
         <p><strong>We'll fetch it.</strong></p>
         <p>Gopher is a pickup-and-delivery service for pretty much anything — not just food. Forgot something at home? Need a couch moved across town? Tell us what you need and where, get an instant quote, and a gopher takes care of the rest — with live tracking the whole way.</p>
         <p>Built in South Africa, for South Africa.</p>
+      `
+    },
+    install: {
+      title: 'Install Gopher',
+      body: `
+        <p>Add Gopher to your home screen for a full app-like experience — its own icon, no browser bar, and working notifications.</p>
+        <h3>On iPhone (Safari)</h3>
+        <ul>
+          <li>Tap the <strong>Share</strong> button (square with an arrow) at the bottom of the screen</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+          <li>Tap <strong>Add</strong> in the top right</li>
+        </ul>
+        <h3>On Android (Chrome)</h3>
+        <ul>
+          <li>Tap the <strong>⋮</strong> menu in the top right</li>
+          <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>, if shown)</li>
+          <li>Confirm by tapping <strong>Add</strong> / <strong>Install</strong></li>
+        </ul>
+        <p class="dim" style="font-size:12px; margin-top:16px;">Note: on iPhone, push notifications only work after this step — a regular Safari tab can't receive them.</p>
       `
     }
   };
