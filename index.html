@@ -685,7 +685,7 @@
     <div class="card">
       <div class="quote-line dim mono"><span>Item cost</span><span id="q-base"></span></div>
       <div class="quote-line dim mono"><span>Delivery fee</span><span id="q-distance"></span></div>
-      <div class="quote-line dim mono"><span>Shopping fee</span><span id="q-service"></span></div>
+      <div class="quote-line dim mono"><span>Service fee</span><span id="q-service"></span></div>
       <div class="quote-total mono"><span>Total</span><span id="q-total"></span></div>
     </div>
 
@@ -1843,7 +1843,7 @@
       instr.textContent = 'Run complete';
       actions.innerHTML = `
         <div class="row" style="color:var(--moss); font-size:13px; margin-bottom:12px;">
-          <span>💰 ${money(Number(activeOrder.quote_total))} added to your balance</span>
+          <span>✅ Delivered successfully</span>
         </div>
         <button class="btn btn-ghost" onclick="backToRuns()">Back to runs</button>`;
     }
