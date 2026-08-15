@@ -1388,6 +1388,10 @@
 
   function initMap(containerId, pickupCoord, dropoffCoord){
     const el = document.getElementById(containerId);
+    // Clearing innerHTML alone doesn't fully detach Leaflet's internal state from this
+    // element — without this, reinitializing the same container throws "Map container
+    // is already initialized" the second time (e.g. accept run → back → accept another).
+    if (el._leaflet_id) { el._leaflet_id = null; }
     el.innerHTML = ''; // clear any previous map instance
     const center = pickupCoord || dropoffCoord || { lat: 0, lng: 0 };
     const map = L.map(containerId).setView([center.lat, center.lng], 13);
