@@ -5,8 +5,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Gopher';
   const options = {
     body: data.body || '',
-    icon: data.icon || undefined,
-    badge: data.badge || undefined,
+    // No custom icon/badge: a full-color icon doesn't convert well to Android's small
+    // monochrome status-bar icon, so we let the OS use its own clean default instead.
     vibrate: [120, 60, 120],
     data: { url: data.url || '/' }
   };
