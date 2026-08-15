@@ -5,8 +5,9 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Gopher';
   const options = {
     body: data.body || '',
-    // No custom icon/badge: a full-color icon doesn't convert well to Android's small
-    // monochrome status-bar icon, so we let the OS use its own clean default instead.
+    // A plain white silhouette works properly as Android's small status-bar icon —
+    // unlike a full-color icon, which Android can't convert cleanly (showed as a blank box).
+    badge: data.badge || undefined,
     vibrate: [120, 60, 120],
     data: { url: data.url || '/' }
   };
