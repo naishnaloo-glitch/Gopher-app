@@ -65,7 +65,12 @@ export default async function handler(req, res) {
     const subs = await subsRes.json();
 
     let sent = 0;
-    const payload = JSON.stringify({ title, body, url: url || '/' });
+    const APP_ORIGIN = 'https://gopher-app-8cyk.vercel.app';
+    const payload = JSON.stringify({
+      title, body,
+      url: url || '/',
+      badge: `${APP_ORIGIN}/icons/icon-badge.png`
+    });
 
     for (const sub of subs || []) {
       const subscription = {
