@@ -27,3 +27,7 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// A minimal fetch handler — required by some Android/Chrome versions for the app to be
+// considered "installable." Just passes requests through normally, no custom caching.
+self.addEventListener('fetch', () => {});
