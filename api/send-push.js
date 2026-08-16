@@ -49,8 +49,15 @@ export default async function handler(req, res) {
       );
       const drivers = await driversRes.json();
       userIds = (drivers || []).map(d => d.id);
+    } else if (target === 'admin') {
+      const adminsRes = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/profiles?is_admin=eq.true&select=id`,
+        { headers: supabaseHeaders }
+      );
+      const admins = await adminsRes.json();
+      userIds = (admins || []).map(a => a.id);
     } else {
-      return res.status(400).json({ error: 'target must be "user" or "drivers"' });
+      return res.status(400).json({ error: 'target must be "user", "drivers", or "admin"' });
     }
 
     if (userIds.length === 0) {
