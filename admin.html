@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Gopher Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --soil:#132238; --soil-deep:#0A1626; --loam:#1B3049; --loam-light:#2B4A6B;
+    --moss:#4C9FE8; --amber:#F2B705; --chalk:#F2F6FB; --chalk-dim:#93A8C2; --rust:#E0584B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%; background:var(--soil-deep);}
+  body{
+    background:radial-gradient(120% 100% at 50% 0%, var(--soil) 0%, var(--soil-deep) 70%);
+    color:var(--chalk); font-family:'Space Grotesk', sans-serif; min-height:100vh;
+  }
+  .wrap{ max-width:720px; margin:0 auto; padding:24px; }
+  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand span{ font-family:'Fraunces', serif; font-weight:600; font-size:22px; }
+  .badge{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--amber); background:var(--loam); border:1px solid var(--loam-light); padding:4px 10px; border-radius:999px; }
+  .btn{ background:var(--loam); border:1px solid var(--loam-light); color:var(--chalk); padding:9px 16px; border-radius:10px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
+  .btn-primary{ background:var(--moss); color:var(--soil-deep); border:none; }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--chalk-dim); margin-bottom:6px; }
+  .field input{ width:100%; background:var(--loam); border:1px solid var(--loam-light); border-radius:10px; padding:12px 14px; color:var(--chalk); font-size:14px; }
+
+  .login-box{ max-width:360px; margin:15vh auto 0; }
+  .error{ color:var(--rust); font-size:12px; margin:-6px 0 14px; font-family:'IBM Plex Mono',monospace; }
+
+  .stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:26px; }
+  .stat-card{ background:var(--loam); border:1px solid var(--loam-light); border-radius:14px; padding:16px; }
+  .stat-num{ font-family:'IBM Plex Mono',monospace; font-size:26px; color:var(--amber); font-weight:600; }
+  .stat-label{ font-size:11px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px; }
+
+  h2{ font-family:'Fraunces',serif; font-weight:600; font-size:19px; margin:26px 0 12px; }
+  .row-card{ background:var(--loam); border:1px solid var(--loam-light); border-radius:12px; padding:14px; margin-bottom:8px; }
+  .row-top{ display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:600; }
+  .row-sub{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--chalk-dim); margin-top:4px; }
+  .pill{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:3px 9px; border-radius:999px; text-transform:capitalize; }
+  .pill-pending{ background:#3a3220; color:var(--amber); }
+  .pill-accepted, .pill-picked_up{ background:#1e3a52; color:var(--moss); }
+  .pill-delivered{ background:#1e3a2a; color:#6fd08c; }
+  .pill-driver{ background:#3a2a1e; color:var(--amber); }
+  .pill-customer{ background:#1e2f3a; color:var(--moss); }
+  .empty{ color:var(--chalk-dim); font-size:13px; padding:20px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="screen active" id="screen-login">
+    <div class="login-box">
+      <div class="brand" style="margin-bottom:26px; justify-content:center;">
+        <span>Gopher Admin</span>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="login-password" type="password" placeholder="••••••••" />
+      </div>
+      <div class="error" id="login-error" style="display:none;"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Log in</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-dashboard">
+    <div class="top">
+      <div class="brand">
+        <span>Gopher Admin</span>
+        <span class="badge">● live</span>
+      </div>
+      <button class="btn" onclick="doLogout()">Log out</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num" id="stat-customers">—</div><div class="stat-label">Customers</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-drivers">—</div><div class="stat-label">Drivers</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-orders-today">—</div><div class="stat-label">Orders today</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-revenue-today">—</div><div class="stat-label">Revenue today</div></div>
+    </div>
+
+    <h2>Recent signups</h2>
+    <div id="signups-list"><div class="empty">Loading…</div></div>
+
+    <h2>Recent orders</h2>
+    <div id="orders-list"><div class="empty">Loading…</div></div>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://pgskgpcqyiljhmglmzfv.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_CkI8aFzF22eempw3riEYGA_J8whzMBE';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storage: window.sessionStorage }
+  });
+
+  let refreshInterval = null;
+
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function money(n){ return 'R' + Number(n || 0).toFixed(2); }
+
+  async function doLogin(){
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+
+    if (!email || !password){ errEl.textContent = 'Enter email and password.'; errEl.style.display = 'block'; return; }
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+
+    const { data: profile, error: pErr } = await sb.from('profiles').select('is_admin').eq('id', data.user.id).single();
+    if (pErr || !profile || !profile.is_admin){
+      errEl.textContent = 'This account does not have admin access.';
+      errEl.style.display = 'block';
+      await sb.auth.signOut();
+      return;
+    }
+
+    showScreen('screen-dashboard');
+    loadDashboard();
+    refreshInterval = setInterval(loadDashboard, 5000);
+  }
+
+  async function doLogout(){
+    clearInterval(refreshInterval);
+    await sb.auth.signOut();
+    showScreen('screen-login');
+  }
+
+  async function checkExistingSession(){
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return false;
+    const { data: profile } = await sb.from('profiles').select('is_admin').eq('id', session.user.id).single();
+    if (!profile || !profile.is_admin) return false;
+    showScreen('screen-dashboard');
+    loadDashboard();
+    refreshInterval = setInterval(loadDashboard, 5000);
+    return true;
+  }
+
+  async function loadDashboard(){
+    const { data: profiles } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: orders } = await sb.from('orders').select('*').order('created_at', { ascending: false });
+
+    const customers = (profiles || []).filter(p => p.role === 'customer');
+    const drivers = (profiles || []).filter(p => p.role === 'driver');
+    document.getElementById('stat-customers').textContent = customers.length;
+    document.getElementById('stat-drivers').textContent = drivers.length;
+
+    const today = new Date().toDateString();
+    const ordersToday = (orders || []).filter(o => new Date(o.created_at).toDateString() === today);
+    const revenueToday = ordersToday.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + Number(o.quote_total || 0), 0);
+    document.getElementById('stat-orders-today').textContent = ordersToday.length;
+    document.getElementById('stat-revenue-today').textContent = money(revenueToday);
+
+    renderSignups((profiles || []).slice(0, 15));
+    renderOrders((orders || []).slice(0, 15), profiles || []);
+  }
+
+  function renderSignups(profiles){
+    const el = document.getElementById('signups-list');
+    if (profiles.length === 0){ el.innerHTML = '<div class="empty">No signups yet.</div>'; return; }
+    el.innerHTML = profiles.map(p => {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || 'No name on file';
+      return `
+        <div class="row-card">
+          <div class="row-top">
+            <span>${name}</span>
+            <span class="pill pill-${p.role}">${p.role}</span>
+          </div>
+          <div class="row-sub">${p.email || ''} ${p.phone ? '· ' + p.phone : ''}</div>
+          <div class="row-sub">${new Date(p.created_at).toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderOrders(orders, profiles){
+    const el = document.getElementById('orders-list');
+    if (orders.length === 0){ el.innerHTML = '<div class="empty">No orders yet.</div>'; return; }
+    const profileMap = {};
+    profiles.forEach(p => profileMap[p.id] = p);
+
+    el.innerHTML = orders.map(o => {
+      const customer = profileMap[o.customer_id];
+      const driver = profileMap[o.driver_id];
+      const customerName = customer ? [customer.first_name, customer.last_name].filter(Boolean).join(' ') : 'Unknown';
+      const driverName = driver ? [driver.first_name, driver.last_name].filter(Boolean).join(' ') : 'Unassigned';
+      return `
+        <div class="row-card">
+          <div class="row-top">
+            <span>${o.item}</span>
+            <span class="pill pill-${o.status}">${o.status.replace('_',' ')}</span>
+          </div>
+          <div class="row-sub">${o.pickup} → ${o.dropoff}</div>
+          <div class="row-sub">${money(o.quote_total)} · ${o.payment_status} · ${o.category || 'small'}</div>
+          <div class="row-sub">Customer: ${customerName} · Driver: ${driverName}</div>
+          <div class="row-sub">${new Date(o.created_at).toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  checkExistingSession();
+</script>
+</body>
+</html>
