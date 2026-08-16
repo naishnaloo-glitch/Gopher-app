@@ -1089,6 +1089,7 @@
         }
         currentUser = data.user;
         showToast('Thanks for signing up! 🎉');
+        sendPush('admin', null, `New ${selectedRole} signup`, `${firstName} ${lastName} just joined as a ${selectedRole}`);
         await routeAfterAuth();
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -1497,6 +1498,7 @@
       }
       notify('✅ Order placed! Payment confirmed 🎉');
       sendPush('drivers', null, 'New order available', currentQuote ? currentQuote.item : 'A new delivery request just came in');
+      sendPush('admin', null, 'New order placed', currentQuote ? `${currentQuote.item} · ${money(currentQuote.total)}` : 'A new order was placed');
       startTrackingOrder(orderId, pickupCoord, dropoffCoord, 'pending', null);
     } catch(err){
       console.error('Verification request failed: ' + err.message);
