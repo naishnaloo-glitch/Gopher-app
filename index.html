@@ -790,6 +790,7 @@
     <div class="card">
       <div class="order-item" id="dr-item"></div>
       <div class="mono dim" style="font-size:11px; margin-top:4px;" id="dr-instruction"></div>
+      <div class="mono" style="font-size:12px; margin-top:10px; padding-top:10px; border-top:1px solid var(--loam-light);" id="dr-customer-info">Loading customer details…</div>
     </div>
 
     <div id="dr-actions" style="width:100%;"></div>
@@ -1505,11 +1506,14 @@
   // Shared by "just paid" and "opened from My Orders" — starts (or restores) live tracking
   let cuPickupCoord = null, cuDropoffCoord = null;
 
-  function startTrackingOrder(orderId, pickupCoord, dropoffCoord, initialStatus, driverCoord){
+  let cuDriverProfileId = null;
+
+  function startTrackingOrder(orderId, pickupCoord, dropoffCoord, initialStatus, driverCoord, driverId){
     activeOrderId = orderId;
     cuPickupCoord = pickupCoord;
     cuDropoffCoord = dropoffCoord;
     lastKnownStatus = initialStatus;
+    cuDriverProfileId = null;
     showScreen('screen-customer-tracking');
     applyOrderStatus(initialStatus);
     cuDriverMarker = null;
@@ -1520,6 +1524,7 @@
         .addTo(cuMap).bindPopup('Your gopher');
       updateEta(driverCoord, initialStatus);
     }
+    if (driverId) loadDriverInfoForCustomer(driverId);
 
     stopTracking();
     if (initialStatus === 'delivered') return; // nothing left to poll
@@ -1527,7 +1532,7 @@
     trackInterval = setInterval(async () => {
       const { data: order, error: fetchErr } = await sb
         .from('orders')
-        .select('status, driver_lat, driver_lng')
+        .select('status, driver_lat, driver_lng, driver_id')
         .eq('id', activeOrderId)
         .single();
       if (fetchErr){ console.error('Order poll failed: ' + fetchErr.message); return; }
@@ -1537,6 +1542,11 @@
         lastKnownStatus = order.status;
       }
       applyOrderStatus(order.status);
+
+      if (order.driver_id && order.driver_id !== cuDriverProfileId){
+        cuDriverProfileId = order.driver_id;
+        loadDriverInfoForCustomer(order.driver_id);
+      }
 
       const driverPos = (order.driver_lat && order.driver_lng) ? { lat: order.driver_lat, lng: order.driver_lng } : null;
       if (driverPos && cuMap){
@@ -1562,6 +1572,23 @@
     const target = status === 'picked_up' ? cuDropoffCoord : cuPickupCoord;
     const mins = estimateEtaMinutes(driverPos, target);
     document.getElementById('cu-eta').textContent = mins !== null ? mins : '—';
+  }
+
+  async function loadDriverInfoForCustomer(driverId){
+    const el = document.getElementById('cu-driver-detail');
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('first_name, last_name, phone')
+      .eq('id', driverId)
+      .single();
+
+    if (error || !profile){
+      console.error('Failed to load driver info: ' + (error ? error.message : 'not found'));
+      return;
+    }
+    const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Your gopher';
+    const phone = profile.phone || 'No number on file';
+    el.textContent = `👤 ${name} · 📞 ${phone}`;
   }
 
   function applyOrderStatus(status){
@@ -1644,7 +1671,7 @@
     const dc = (order.dropoff_lat && order.dropoff_lng) ? { lat: order.dropoff_lat, lng: order.dropoff_lng } : null;
     const drc = (order.driver_lat && order.driver_lng) ? { lat: order.driver_lat, lng: order.driver_lng } : null;
 
-    startTrackingOrder(order.id, pc, dc, order.status, drc);
+    startTrackingOrder(order.id, pc, dc, order.status, drc, order.driver_id);
   }
 
   // ---------- driver flow (backed by the real orders table) ----------
@@ -1718,7 +1745,7 @@
   }
 
   // Shared setup for showing the navigate screen, whether just accepted or reopened from history
-  function openRunScreen(order){
+  async function openRunScreen(order){
     activeOrder = order;
     driverStage = order.status; // 'accepted' | 'picked_up' | 'delivered'
     document.getElementById('dr-run-id').textContent = 'run #' + order.id.slice(0, 6);
@@ -1735,6 +1762,26 @@
 
     updateDriverStageUI();
     showScreen('screen-driver-navigating');
+    loadCustomerInfo(order.customer_id);
+  }
+
+  async function loadCustomerInfo(customerId){
+    const el = document.getElementById('dr-customer-info');
+    el.textContent = 'Loading customer details…';
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('first_name, last_name, phone')
+      .eq('id', customerId)
+      .single();
+
+    if (error || !profile){
+      console.error('Failed to load customer info: ' + (error ? error.message : 'not found'));
+      el.textContent = 'Customer details unavailable';
+      return;
+    }
+    const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Customer';
+    const phone = profile.phone || 'No number on file';
+    el.textContent = `👤 ${name} · 📞 ${phone}`;
   }
 
   // ---------- driver run history ----------
