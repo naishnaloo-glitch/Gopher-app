@@ -825,7 +825,13 @@
   // Full origin of the deployed backend — used instead of relative paths so API calls
   // still work once this app is wrapped natively and no longer served from this domain.
   const API_BASE = 'https://gopher-app-8cyk.vercel.app';
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Using sessionStorage instead of the default localStorage means each browser TAB keeps
+  // its own independent login — essential for testing customer and driver accounts side by
+  // side, and also just correct behavior generally (one tab's login shouldn't silently
+  // overwrite another's). A page refresh still keeps you logged in; only closing the tab does not.
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storage: window.sessionStorage }
+  });
 
   let selectedRole = 'customer';
   let authMode = 'signin';
