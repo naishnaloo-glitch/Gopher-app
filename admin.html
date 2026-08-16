@@ -84,10 +84,10 @@
     </div>
 
     <div class="stats">
-      <div class="stat-card"><div class="stat-num" id="stat-customers">—</div><div class="stat-label">Customers</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-drivers">—</div><div class="stat-label">Drivers</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-orders-today">—</div><div class="stat-label">Orders today</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-revenue-today">—</div><div class="stat-label">Revenue today</div></div>
+      <div class="stat-card" onclick="openDetail('customers')" style="cursor:pointer;"><div class="stat-num" id="stat-customers">—</div><div class="stat-label">Customers</div></div>
+      <div class="stat-card" onclick="openDetail('drivers')" style="cursor:pointer;"><div class="stat-num" id="stat-drivers">—</div><div class="stat-label">Drivers</div></div>
+      <div class="stat-card" onclick="openDetail('orders')" style="cursor:pointer;"><div class="stat-num" id="stat-orders-today">—</div><div class="stat-label">Orders today</div></div>
+      <div class="stat-card" onclick="openDetail('revenue')" style="cursor:pointer;"><div class="stat-num" id="stat-revenue-today">—</div><div class="stat-label">Revenue today</div></div>
     </div>
 
     <h2>Recent signups</h2>
@@ -95,6 +95,16 @@
 
     <h2>Recent orders</h2>
     <div id="orders-list"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="screen" id="screen-detail">
+    <div class="top">
+      <button class="btn" onclick="backToDashboard()">← Back</button>
+      <span class="badge" id="detail-badge">● live</span>
+    </div>
+    <h2 id="detail-title" style="margin-top:0;"></h2>
+    <div id="detail-summary"></div>
+    <div id="detail-list"></div>
   </div>
 
 </div>
@@ -155,27 +165,79 @@
     return true;
   }
 
+  let allProfiles = [], allOrders = [];
+  let currentDetailType = null;
+
   async function loadDashboard(){
     const { data: profiles } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
     const { data: orders } = await sb.from('orders').select('*').order('created_at', { ascending: false });
+    allProfiles = profiles || [];
+    allOrders = orders || [];
 
-    const customers = (profiles || []).filter(p => p.role === 'customer');
-    const drivers = (profiles || []).filter(p => p.role === 'driver');
+    const customers = allProfiles.filter(p => p.role === 'customer');
+    const drivers = allProfiles.filter(p => p.role === 'driver');
     document.getElementById('stat-customers').textContent = customers.length;
     document.getElementById('stat-drivers').textContent = drivers.length;
 
     const today = new Date().toDateString();
-    const ordersToday = (orders || []).filter(o => new Date(o.created_at).toDateString() === today);
+    const ordersToday = allOrders.filter(o => new Date(o.created_at).toDateString() === today);
     const revenueToday = ordersToday.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + Number(o.quote_total || 0), 0);
     document.getElementById('stat-orders-today').textContent = ordersToday.length;
     document.getElementById('stat-revenue-today').textContent = money(revenueToday);
 
-    renderSignups((profiles || []).slice(0, 15));
-    renderOrders((orders || []).slice(0, 15), profiles || []);
+    renderSignups(allProfiles.slice(0, 15));
+    renderOrders(allOrders.slice(0, 15), allProfiles);
+
+    // Keep the detail screen live too, if it's the one currently open
+    if (currentDetailType) renderDetail(currentDetailType);
+  }
+
+  function openDetail(type){
+    currentDetailType = type;
+    showScreen('screen-detail');
+    renderDetail(type);
+  }
+
+  function backToDashboard(){
+    currentDetailType = null;
+    showScreen('screen-dashboard');
+  }
+
+  function renderDetail(type){
+    const titles = { customers: 'All customers', drivers: 'All drivers', orders: 'All orders', revenue: 'Revenue' };
+    document.getElementById('detail-title').textContent = titles[type];
+    const summaryEl = document.getElementById('detail-summary');
+    const listEl = document.getElementById('detail-list');
+
+    if (type === 'customers'){
+      summaryEl.innerHTML = '';
+      renderSignupsInto(listEl, allProfiles.filter(p => p.role === 'customer'));
+    } else if (type === 'drivers'){
+      summaryEl.innerHTML = '';
+      renderSignupsInto(listEl, allProfiles.filter(p => p.role === 'driver'));
+    } else if (type === 'orders'){
+      summaryEl.innerHTML = '';
+      renderOrdersInto(listEl, allOrders, allProfiles);
+    } else if (type === 'revenue'){
+      const paid = allOrders.filter(o => o.payment_status === 'paid');
+      const total = paid.reduce((sum, o) => sum + Number(o.quote_total || 0), 0);
+      const today = new Date().toDateString();
+      const todayTotal = paid.filter(o => new Date(o.created_at).toDateString() === today).reduce((sum, o) => sum + Number(o.quote_total || 0), 0);
+      summaryEl.innerHTML = `
+        <div class="stats" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-card"><div class="stat-num">${money(total)}</div><div class="stat-label">All-time revenue</div></div>
+          <div class="stat-card"><div class="stat-num">${money(todayTotal)}</div><div class="stat-label">Today</div></div>
+        </div>
+      `;
+      renderOrdersInto(listEl, paid, allProfiles);
+    }
   }
 
   function renderSignups(profiles){
-    const el = document.getElementById('signups-list');
+    renderSignupsInto(document.getElementById('signups-list'), profiles);
+  }
+
+  function renderSignupsInto(el, profiles){
     if (profiles.length === 0){ el.innerHTML = '<div class="empty">No signups yet.</div>'; return; }
     el.innerHTML = profiles.map(p => {
       const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || 'No name on file';
@@ -193,7 +255,10 @@
   }
 
   function renderOrders(orders, profiles){
-    const el = document.getElementById('orders-list');
+    renderOrdersInto(document.getElementById('orders-list'), orders, profiles);
+  }
+
+  function renderOrdersInto(el, orders, profiles){
     if (orders.length === 0){ el.innerHTML = '<div class="empty">No orders yet.</div>'; return; }
     const profileMap = {};
     profiles.forEach(p => profileMap[p.id] = p);
