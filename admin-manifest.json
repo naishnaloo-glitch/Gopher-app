@@ -4,6 +4,7 @@
   "description": "Admin dashboard for the Gopher delivery app.",
   "start_url": "/admin.html",
   "scope": "/admin.html",
+  "id": "/admin.html",
   "display": "standalone",
   "background_color": "#0A1626",
   "theme_color": "#0A1626",
