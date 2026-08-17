@@ -87,7 +87,10 @@
         <span>Gopher Admin</span>
         <span class="badge">● live</span>
       </div>
-      <button class="btn" onclick="doLogout()">Log out</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" id="install-btn" onclick="installApp()" style="display:none;">📲 Install</button>
+        <button class="btn" onclick="doLogout()">Log out</button>
+      </div>
     </div>
 
     <div class="stats">
@@ -124,6 +127,30 @@
   });
 
   let refreshInterval = null;
+
+  // ---------- Install as an app (PWA) ----------
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  function updateInstallButton(){
+    const btn = document.getElementById('install-btn');
+    if (btn) btn.style.display = isStandalone() ? 'none' : 'inline-block';
+  }
+  async function installApp(){
+    if (isStandalone()){ alert('Already installed.'); return; }
+    if (deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    } else {
+      alert('To install: open the browser menu (⋮) and tap "Add to Home screen".');
+    }
+  }
 
   function showScreen(id){
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -176,6 +203,7 @@
   let currentDetailType = null;
 
   async function loadDashboard(){
+    updateInstallButton();
     const { data: profiles } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
     const { data: orders } = await sb.from('orders').select('*').order('created_at', { ascending: false });
     allProfiles = profiles || [];
