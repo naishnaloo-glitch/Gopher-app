@@ -603,9 +603,21 @@
         <label>Password</label>
         <input id="login-password" type="password" placeholder="••••••••" />
       </div>
+      <button type="button" id="forgot-password-link" onclick="forgotPassword()" style="background:none; border:none; color:var(--moss); font-size:12px; margin:-8px 0 14px; display:block; padding:0;">Forgot password?</button>
       <div id="auth-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
       <button class="btn btn-primary" type="button" id="auth-submit" onclick="doAuth()">Log in</button>
     </div>
+  </div>
+
+  <!-- ============ SET NEW PASSWORD (after email reset link) ============ -->
+  <div class="screen" id="screen-reset-password">
+    <h1 class="h1" style="margin-bottom:18px;">Set a new password</h1>
+    <div class="field">
+      <label>New password</label>
+      <input id="new-password" type="password" placeholder="••••••••" />
+    </div>
+    <div id="reset-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
+    <button class="btn btn-primary" onclick="submitNewPassword()">Save new password</button>
   </div>
 
   <!-- ============ CUSTOMER: REQUEST ============ -->
@@ -860,6 +872,29 @@
     } else {
       showScreen('screen-customer-request');
     }
+  }
+
+  async function forgotPassword(){
+    const email = document.getElementById('login-email').value.trim();
+    if (!email){ showAuthError('Enter your email above first, then tap "Forgot password?"'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    if (error){ showAuthError(error.message); return; }
+    showToast('📧 Check your email for a reset link');
+  }
+
+  async function submitNewPassword(){
+    const pw = document.getElementById('new-password').value;
+    const errEl = document.getElementById('reset-error');
+    errEl.style.display = 'none';
+    if (!pw || pw.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display = 'block'; return; }
+
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error){ errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+
+    showToast('Password updated ✅');
+    const { data: { session } } = await sb.auth.getSession();
+    if (session){ currentUser = session.user; await routeAfterAuth(); }
+    else { showScreen('screen-role'); }
   }
 
   function setAuthMode(mode){
@@ -2112,6 +2147,12 @@
 
   // auto-advance from loading screen: skip to app if already logged in, else role select
   setTimeout(async () => {
+    // A password reset email link lands back here with type=recovery in the URL —
+    // catch that before anything else and send straight to the "set new password" screen.
+    if (window.location.hash.includes('type=recovery')){
+      showScreen('screen-reset-password');
+      return;
+    }
     const loggedIn = await checkExistingSession();
     if (!loggedIn) showScreen('screen-role');
   }, 2300);
