@@ -677,6 +677,9 @@
     <button class="btn" id="install-cta" onclick="installApp()" style="margin-top:24px; background:var(--amber); color:var(--soil-deep); font-weight:700;">
       📲 Install Gopher as an app
     </button>
+    <p class="dim" id="install-note" style="font-size:11.5px; margin-top:8px; text-align:center;">
+      Best experience: open this in <strong>Chrome</strong> (Android) or <strong>Safari</strong> (iPhone) before installing.
+    </p>
   </div>
 
   <!-- ============ CUSTOMER: QUOTE ============ -->
@@ -961,7 +964,9 @@
 
   function updateInstallCta(){
     const btn = document.getElementById('install-cta');
+    const note = document.getElementById('install-note');
     if (btn) btn.style.display = isStandalone() ? 'none' : 'block';
+    if (note) note.style.display = isStandalone() ? 'none' : 'block';
   }
 
   async function installApp(){
@@ -2110,22 +2115,63 @@
     },
     install: {
       title: 'Install Gopher',
-      body: `
-        <p>Add Gopher to your home screen for a full app-like experience — its own icon, no browser bar, and working notifications.</p>
-        <h3>On iPhone (Safari)</h3>
-        <ul>
-          <li>Tap the <strong>Share</strong> button (square with an arrow) at the bottom of the screen</li>
-          <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-          <li>Tap <strong>Add</strong> in the top right</li>
-        </ul>
-        <h3>On Android (Chrome)</h3>
-        <ul>
-          <li>Tap the <strong>⋮</strong> menu in the top right</li>
-          <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>, if shown)</li>
-          <li>Confirm by tapping <strong>Add</strong> / <strong>Install</strong></li>
-        </ul>
-        <p class="dim" style="font-size:12px; margin-top:16px;">Note: on iPhone, push notifications only work after this step — a regular Safari tab can't receive them.</p>
-      `
+      body: (() => {
+        const ua = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/.test(ua);
+        const isSamsung = /SamsungBrowser/.test(ua);
+        const isFirefox = /Firefox|FxiOS/.test(ua);
+        const isEdge = /EdgA|Edg\//.test(ua);
+        const isChrome = /CriOS|Chrome/.test(ua) && !isSamsung && !isEdge;
+
+        let steps = '';
+        if (isIOS){
+          steps = `
+            <h3>On iPhone (Safari)</h3>
+            <ul>
+              <li>Tap the <strong>Share</strong> button (square with an arrow) at the bottom</li>
+              <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+              <li>Tap <strong>Add</strong> in the top right</li>
+            </ul>
+            <p class="dim" style="font-size:12px; margin-top:12px;">Note: push notifications only work after this step — a regular Safari tab can't receive them.</p>
+          `;
+        } else if (isSamsung){
+          steps = `
+            <h3>On Samsung Internet</h3>
+            <ul>
+              <li>Tap the <strong>menu icon</strong> at the bottom right (three lines, or "☰")</li>
+              <li>Tap <strong>Add page to</strong></li>
+              <li>Choose <strong>Home screen</strong> (not "Bookmarks")</li>
+              <li>Confirm by tapping <strong>Add</strong></li>
+            </ul>
+          `;
+        } else if (isFirefox){
+          steps = `
+            <h3>On Firefox</h3>
+            <p>Firefox for Android doesn't currently support installing this as a full standalone app — "Add to Home Screen" here just creates a bookmark that still opens inside Firefox, and notifications won't work properly.</p>
+            <p style="margin-top:10px;">For the full experience, please open this page in <strong>Chrome</strong> or <strong>Samsung Internet</strong> instead.</p>
+          `;
+        } else if (isEdge){
+          steps = `
+            <h3>On Edge</h3>
+            <ul>
+              <li>Tap the <strong>⋯</strong> menu at the bottom</li>
+              <li>Tap <strong>Add to phone</strong></li>
+              <li>Confirm by tapping <strong>Install</strong> / <strong>Add</strong></li>
+            </ul>
+          `;
+        } else {
+          steps = `
+            <h3>On Chrome (or similar)</h3>
+            <ul>
+              <li>Tap the <strong>⋮</strong> menu in the top right</li>
+              <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>, if shown)</li>
+              <li>Confirm by tapping <strong>Add</strong> / <strong>Install</strong></li>
+            </ul>
+          `;
+        }
+
+        return `<p>Add Gopher to your home screen for a full app-like experience — its own icon, no browser bar, and working notifications.</p>${steps}`;
+      })()
     }
   };
 
