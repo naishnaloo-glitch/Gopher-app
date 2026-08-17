@@ -4,6 +4,7 @@
   "description": "On-demand pickup and delivery for anything, anywhere in South Africa.",
   "start_url": "/",
   "scope": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#0A1626",
   "theme_color": "#0A1626",
