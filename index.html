@@ -54,8 +54,8 @@
     position:relative;
   }
   .screen{ display:none; }
-  .screen.active{ display:flex; flex-direction:column; align-items:center; animation:fadeIn .5s ease; }
-  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .screen.active{ display:flex; flex-direction:column; align-items:center; animation:fadeIn .35s cubic-bezier(.22,.9,.36,1); }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
 
   /* ---------- Logo mark ---------- */
   .mark{ position:relative; width:96px; height:96px; margin-bottom:18px; }
@@ -129,22 +129,24 @@
     display:flex;
     align-items:center;
     gap:14px;
-    background:var(--loam);
+    background:linear-gradient(180deg, #1E3555, var(--loam));
     border:1px solid var(--loam-light);
     border-radius:18px;
     padding:18px;
     margin-bottom:14px;
     cursor:pointer;
-    transition:border-color .15s ease, transform .15s ease;
+    transition:border-color .15s ease, transform .12s ease, box-shadow .15s ease;
     text-align:left;
+    box-shadow:0 4px 16px rgba(0,0,0,0.2);
   }
-  .role-card:active{ transform:scale(0.98); }
+  .role-card:active{ transform:scale(0.97); box-shadow:0 2px 8px rgba(0,0,0,0.18); }
   .role-card:hover{ border-color:var(--moss); }
   .role-icon{
-    width:44px; height:44px; border-radius:12px;
+    width:46px; height:46px; border-radius:13px;
     display:flex; align-items:center; justify-content:center;
     background:var(--soil-deep);
     flex-shrink:0;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);
   }
   .role-copy .role-title{ font-weight:600; font-size:15px; margin-bottom:2px; }
   .role-copy .role-sub{ font-size:12px; color:var(--chalk-dim); }
@@ -178,8 +180,9 @@
     font-family:'Space Grotesk', sans-serif;
     font-size:14px;
     outline:none;
+    transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
   }
-  .field input:focus{ border-color:var(--moss); }
+  .field input:focus{ border-color:var(--moss); box-shadow:0 0 0 3px rgba(76,159,232,0.18); background:#20395a; }
   .btn{
     width:100%;
     padding:14px;
@@ -190,9 +193,10 @@
     font-size:14px;
     cursor:pointer;
     margin-top:6px;
+    transition:transform .12s ease, box-shadow .18s ease, opacity .12s ease, filter .12s ease;
   }
-  .btn-primary{ background:var(--moss); color:var(--soil-deep); }
-  .btn-primary:active{ opacity:0.85; }
+  .btn-primary{ background:linear-gradient(180deg, #5CACEF, var(--moss)); color:var(--soil-deep); box-shadow:0 6px 16px rgba(76,159,232,0.28); }
+  .btn-primary:active{ transform:scale(0.97); box-shadow:0 2px 8px rgba(76,159,232,0.22); filter:brightness(0.96); }
   .role-pill{
     display:inline-flex; align-items:center; gap:6px;
     background:var(--soil-deep);
@@ -227,12 +231,16 @@
   }
   .card{
     width:100%;
-    background:var(--loam);
+    background:linear-gradient(180deg, #1E3555, var(--loam));
     border:1px solid var(--loam-light);
     border-radius:16px;
     padding:16px;
     margin-bottom:14px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.22);
+    transition:transform .15s ease, box-shadow .15s ease;
   }
+  .card[onclick]{ cursor:pointer; }
+  .card[onclick]:active{ transform:scale(0.985); box-shadow:0 2px 10px rgba(0,0,0,0.2); }
   .row{ display:flex; justify-content:space-between; align-items:center; }
   .mono{ font-family:'IBM Plex Mono', monospace; }
   .dim{ color:var(--chalk-dim); }
@@ -261,9 +269,11 @@
   .order-pay{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--amber); }
   .order-route{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--chalk-dim); margin:6px 0 12px; }
 
-  .btn-secondary{ background:var(--amber); color:var(--soil-deep); }
+  .btn-secondary{ background:linear-gradient(180deg, #FFC93D, var(--amber)); color:var(--soil-deep); box-shadow:0 6px 16px rgba(242,183,5,0.25); }
+  .btn-secondary:active{ transform:scale(0.97); filter:brightness(0.96); }
   .btn-ghost{ background:transparent; color:var(--chalk); border:1px solid var(--loam-light); }
-  .btn-tab-active{ background:var(--moss); color:var(--soil-deep); }
+  .btn-ghost:active{ transform:scale(0.97); background:rgba(255,255,255,0.03); }
+  .btn-tab-active{ background:var(--moss); color:var(--soil-deep); box-shadow:0 3px 10px rgba(76,159,232,0.25); }
   .btn-tab-inactive{ background:var(--loam); color:var(--chalk-dim); border:1px solid var(--loam-light); }
 
   .empty-state{ text-align:center; padding:40px 10px; color:var(--chalk-dim); font-size:13px; }
@@ -321,11 +331,14 @@
     font-size:12px;
     font-weight:600;
     cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
   }
+  .addr-type-btn:active{ transform:scale(0.96); }
   .addr-type-btn.active{
     background:var(--moss);
     color:var(--soil-deep);
     border-color:var(--moss);
+    box-shadow:0 3px 10px rgba(76,159,232,0.3);
   }
 
   /* ---------- Hamburger menu ---------- */
