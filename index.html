@@ -129,24 +129,26 @@
     display:flex;
     align-items:center;
     gap:14px;
-    background:linear-gradient(180deg, #1E3555, var(--loam));
-    border:1px solid var(--loam-light);
+    background:rgba(43,74,107,0.38);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     border-radius:18px;
     padding:18px;
     margin-bottom:14px;
     cursor:pointer;
     transition:border-color .15s ease, transform .12s ease, box-shadow .15s ease;
     text-align:left;
-    box-shadow:0 4px 16px rgba(0,0,0,0.2);
+    box-shadow:0 8px 24px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.06);
   }
-  .role-card:active{ transform:scale(0.97); box-shadow:0 2px 8px rgba(0,0,0,0.18); }
+  .role-card:active{ transform:scale(0.97); box-shadow:0 4px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06); }
   .role-card:hover{ border-color:var(--moss); }
   .role-icon{
     width:46px; height:46px; border-radius:13px;
     display:flex; align-items:center; justify-content:center;
-    background:var(--soil-deep);
+    background:rgba(10,22,38,0.5);
     flex-shrink:0;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);
   }
   .role-copy .role-title{ font-weight:600; font-size:15px; margin-bottom:2px; }
   .role-copy .role-sub{ font-size:12px; color:var(--chalk-dim); }
@@ -199,8 +201,10 @@
   .btn-primary:active{ transform:scale(0.97); box-shadow:0 2px 8px rgba(76,159,232,0.22); filter:brightness(0.96); }
   .role-pill{
     display:inline-flex; align-items:center; gap:6px;
-    background:var(--soil-deep);
-    border:1px solid var(--loam-light);
+    background:rgba(10,22,38,0.55);
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     padding:5px 12px;
     border-radius:999px;
     font-family:'IBM Plex Mono', monospace;
@@ -222,8 +226,10 @@
     font-family:'IBM Plex Mono', monospace;
     font-size:10px;
     color:var(--moss);
-    background:var(--soil-deep);
-    border:1px solid var(--loam-light);
+    background:rgba(10,22,38,0.55);
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     padding:4px 10px;
     border-radius:999px;
     text-transform:uppercase;
@@ -231,16 +237,18 @@
   }
   .card{
     width:100%;
-    background:linear-gradient(180deg, #1E3555, var(--loam));
-    border:1px solid var(--loam-light);
+    background:rgba(43,74,107,0.38);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     border-radius:16px;
     padding:16px;
     margin-bottom:14px;
-    box-shadow:0 4px 18px rgba(0,0,0,0.22);
+    box-shadow:0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.06);
     transition:transform .15s ease, box-shadow .15s ease;
   }
   .card[onclick]{ cursor:pointer; }
-  .card[onclick]:active{ transform:scale(0.985); box-shadow:0 2px 10px rgba(0,0,0,0.2); }
+  .card[onclick]:active{ transform:scale(0.985); box-shadow:0 4px 14px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.06); }
   .row{ display:flex; justify-content:space-between; align-items:center; }
   .mono{ font-family:'IBM Plex Mono', monospace; }
   .dim{ color:var(--chalk-dim); }
@@ -250,11 +258,14 @@
 
   .tunnel-wrap{
     width:100%;
-    background:linear-gradient(180deg, var(--loam), var(--soil-deep));
-    border:1px solid var(--loam-light);
+    background:rgba(27,48,73,0.38);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     border-radius:16px;
     padding:14px;
     margin-bottom:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.06);
   }
   .tunnel-wrap svg{ width:100%; height:110px; display:block; }
   .tunnel-labels{ display:flex; justify-content:space-between; margin-top:4px; }
@@ -283,8 +294,10 @@
     position:absolute;
     top:100%; left:0; right:0;
     margin-top:4px;
-    background:var(--loam);
-    border:1px solid var(--loam-light);
+    background:rgba(27,48,73,0.72);
+    backdrop-filter:blur(24px) saturate(160%);
+    -webkit-backdrop-filter:blur(24px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     border-radius:12px;
     overflow:hidden;
     z-index:30;
@@ -348,14 +361,16 @@
     z-index:60;
     width:40px; height:40px;
     border-radius:12px;
-    background:var(--loam);
-    border:1px solid var(--loam-light);
+    background:rgba(27,48,73,0.55);
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.10);
     color:var(--chalk);
     font-size:18px;
     cursor:pointer;
     align-items:center;
     justify-content:center;
-    box-shadow:0 4px 12px rgba(0,0,0,0.4);
+    box-shadow:0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
   }
   #menu-backdrop{
     position:fixed; inset:0;
@@ -370,20 +385,23 @@
     position:fixed;
     top:0; bottom:0; left:0;
     width:82%; max-width:320px;
-    background:var(--soil);
-    border-right:1px solid var(--loam-light);
+    background:rgba(19,34,56,0.72);
+    backdrop-filter:blur(28px) saturate(160%);
+    -webkit-backdrop-filter:blur(28px) saturate(160%);
+    border-right:1px solid rgba(255,255,255,0.10);
     z-index:2000;
     transform:translateX(-100%);
     transition:transform .25s ease;
     display:flex;
     flex-direction:column;
     padding:20px 0;
+    box-shadow:8px 0 32px rgba(0,0,0,0.35);
   }
   #menu-drawer.show{ transform:translateX(0); }
   .menu-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:0 20px 18px;
-    border-bottom:1px solid var(--loam-light);
+    border-bottom:1px solid rgba(255,255,255,0.10);
     margin-bottom:10px;
   }
   #menu-close{
@@ -416,14 +434,17 @@
     top:18px;
     left:50%;
     transform:translateX(-50%) translateY(-12px);
-    background:var(--moss);
+    background:rgba(76,159,232,0.82);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
     color:var(--soil-deep);
     font-family:'Space Grotesk', sans-serif;
     font-weight:600;
     font-size:13px;
     padding:12px 20px;
     border-radius:999px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.25);
+    box-shadow:0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
     opacity:0;
     pointer-events:none;
     transition:opacity .25s ease, transform .25s ease;
@@ -1977,244 +1998,3 @@
 
   function backToRuns(){
     stopLocationSharing();
-    activeOrder = null;
-    renderDriverOrders();
-    showScreen('screen-driver-orders');
-  }
-
-  // ---------- Hamburger menu ----------
-  let screenBeforeMenu = null;
-
-  function getActiveScreenId(){
-    const el = document.querySelector('.screen.active');
-    return el ? el.id : 'screen-role';
-  }
-
-  function openMenu(){
-    document.getElementById('menu-drawer').classList.add('show');
-    document.getElementById('menu-backdrop').classList.add('show');
-  }
-  function closeMenu(){
-    document.getElementById('menu-drawer').classList.remove('show');
-    document.getElementById('menu-backdrop').classList.remove('show');
-  }
-
-  // ---------- Profile ----------
-  let currentProfile = null;
-
-  async function openProfile(){
-    screenBeforeMenu = getActiveScreenId();
-    closeMenu();
-    showScreen('screen-profile');
-    document.getElementById('profile-role-badge').textContent = selectedRole;
-    const content = document.getElementById('profile-content');
-    content.innerHTML = `<div class="empty-state">Loading…</div>`;
-
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select('first_name, last_name, email, phone, role')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error){
-      console.error('Failed to load profile: ' + error.message);
-      content.innerHTML = `<div class="empty-state">Couldn't load your profile.</div>`;
-      return;
-    }
-
-    currentProfile = profile;
-    renderProfileView();
-  }
-
-  function renderProfileView(){
-    const content = document.getElementById('profile-content');
-    const rows = [
-      ['First name', currentProfile.first_name || 'Not provided'],
-      ['Last name', currentProfile.last_name || 'Not provided'],
-      ['Email', currentProfile.email || currentUser.email],
-      ['Cell number', currentProfile.phone || 'Not provided'],
-      ['Account type', currentProfile.role],
-    ];
-    content.innerHTML = `
-      <div class="card">
-        ${rows.map(([label, val]) => `
-          <div class="quote-line" style="border-bottom:1px solid var(--loam-light); padding:10px 0;">
-            <span class="dim mono" style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em;">${label}</span><br/>
-            <span style="font-size:14px;">${val}</span>
-          </div>
-        `).join('')}
-      </div>
-      <button class="btn btn-primary" onclick="renderProfileEdit()">Edit profile</button>
-    `;
-  }
-
-  function renderProfileEdit(){
-    const content = document.getElementById('profile-content');
-    content.innerHTML = `
-      <div class="field">
-        <label>First name</label>
-        <input id="edit-first-name" type="text" value="${currentProfile.first_name || ''}" />
-      </div>
-      <div class="field">
-        <label>Last name</label>
-        <input id="edit-last-name" type="text" value="${currentProfile.last_name || ''}" />
-      </div>
-      <div class="field">
-        <label>Cell number</label>
-        <input id="edit-phone" type="tel" value="${currentProfile.phone || ''}" />
-      </div>
-      <div id="profile-edit-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
-      <button class="btn btn-primary" onclick="saveProfile()">Save changes</button>
-      <button class="btn btn-ghost" onclick="renderProfileView()">Cancel</button>
-    `;
-  }
-
-  async function saveProfile(){
-    const firstName = document.getElementById('edit-first-name').value.trim();
-    const lastName = document.getElementById('edit-last-name').value.trim();
-    const phone = document.getElementById('edit-phone').value.trim();
-    const errEl = document.getElementById('profile-edit-error');
-
-    if (!firstName || !lastName || !phone){
-      errEl.textContent = 'All fields are required.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    const { data, error } = await sb
-      .from('profiles')
-      .update({ first_name: firstName, last_name: lastName, phone: phone })
-      .eq('id', currentUser.id)
-      .select()
-      .single();
-
-    if (error){
-      console.error('Profile update failed: ' + error.message);
-      errEl.textContent = 'Could not save changes — try again.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    currentProfile = data;
-    showToast('Profile updated ✅');
-    renderProfileView();
-  }
-
-  function closeProfile(){
-    showScreen(screenBeforeMenu || 'screen-role');
-  }
-
-  // ---------- Policy / info docs ----------
-  const POLICIES = {
-    help: {
-      title: 'Help & Support',
-      body: `
-        <p>Something not working, or got a question about an order?</p>
-        <h3>Contact us</h3>
-        <p>support@gopherapp.example<br/>Add your real support email or number here.</p>
-        <h3>Common questions</h3>
-        <p><strong>Where's my order?</strong> Check "My Orders" from this menu — every request updates live.</p>
-        <p><strong>My payment didn't go through.</strong> No charge is made unless Paystack confirms success — try again, or contact support with your order details.</p>
-        <p><strong>I'm a driver and want to sign up.</strong> Choose "I'm a driver" at signup — no separate approval step yet at this early stage.</p>
-      `
-    },
-    about: {
-      title: 'About Gopher',
-      body: `
-        <p><strong>We'll fetch it.</strong></p>
-        <p>Gopher is a pickup-and-delivery service for pretty much anything — not just food. Forgot something at home? Need a couch moved across town? Tell us what you need and where, get an instant quote, and a gopher takes care of the rest — with live tracking the whole way.</p>
-        <p>Built in South Africa, for South Africa.</p>
-      `
-    },
-    install: {
-      title: 'Install Gopher',
-      body: (() => {
-        const ua = navigator.userAgent;
-        const isIOS = /iPhone|iPad|iPod/.test(ua);
-        const isSamsung = /SamsungBrowser/.test(ua);
-        const isFirefox = /Firefox|FxiOS/.test(ua);
-        const isEdge = /EdgA|Edg\//.test(ua);
-        const isChrome = /CriOS|Chrome/.test(ua) && !isSamsung && !isEdge;
-
-        let steps = '';
-        if (isIOS){
-          steps = `
-            <h3>On iPhone (Safari)</h3>
-            <ul>
-              <li>Tap the <strong>Share</strong> button (square with an arrow) at the bottom</li>
-              <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
-              <li>Tap <strong>Add</strong> in the top right</li>
-            </ul>
-            <p class="dim" style="font-size:12px; margin-top:12px;">Note: push notifications only work after this step — a regular Safari tab can't receive them.</p>
-          `;
-        } else if (isSamsung){
-          steps = `
-            <h3>On Samsung Internet</h3>
-            <ul>
-              <li>Tap the <strong>menu icon</strong> at the bottom right (three lines, or "☰")</li>
-              <li>Tap <strong>Add page to</strong></li>
-              <li>Choose <strong>Home screen</strong> (not "Bookmarks")</li>
-              <li>Confirm by tapping <strong>Add</strong></li>
-            </ul>
-          `;
-        } else if (isFirefox){
-          steps = `
-            <h3>On Firefox</h3>
-            <p>Firefox for Android doesn't currently support installing this as a full standalone app — "Add to Home Screen" here just creates a bookmark that still opens inside Firefox, and notifications won't work properly.</p>
-            <p style="margin-top:10px;">For the full experience, please open this page in <strong>Chrome</strong> or <strong>Samsung Internet</strong> instead.</p>
-          `;
-        } else if (isEdge){
-          steps = `
-            <h3>On Edge</h3>
-            <ul>
-              <li>Tap the <strong>⋯</strong> menu at the bottom</li>
-              <li>Tap <strong>Add to phone</strong></li>
-              <li>Confirm by tapping <strong>Install</strong> / <strong>Add</strong></li>
-            </ul>
-          `;
-        } else {
-          steps = `
-            <h3>On Chrome (or similar)</h3>
-            <ul>
-              <li>Tap the <strong>⋮</strong> menu in the top right</li>
-              <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>, if shown)</li>
-              <li>Confirm by tapping <strong>Add</strong> / <strong>Install</strong></li>
-            </ul>
-          `;
-        }
-
-        return `<p>Add Gopher to your home screen for a full app-like experience — its own icon, no browser bar, and working notifications.</p>${steps}`;
-      })()
-    }
-  };
-
-  function openDoc(key){
-    screenBeforeMenu = getActiveScreenId();
-    closeMenu();
-    const doc = POLICIES[key];
-    document.getElementById('doc-title').textContent = doc.title;
-    document.getElementById('doc-body').innerHTML = doc.body;
-    showScreen('screen-doc');
-  }
-
-  function closeDoc(){
-    showScreen(screenBeforeMenu || 'screen-role');
-  }
-
-  // Set the initial package-size hint text (button already shows "active" by default in HTML)
-  document.getElementById('category-hint').textContent = CATEGORY_INFO.small.dims;
-
-  // auto-advance from loading screen: skip to app if already logged in, else role select
-  setTimeout(async () => {
-    // A password reset email link lands back here with type=recovery in the URL —
-    // catch that before anything else and send straight to the "set new password" screen.
-    if (window.location.hash.includes('type=recovery')){
-      showScreen('screen-reset-password');
-      return;
-    }
-    const loggedIn = await checkExistingSession();
-    if (!loggedIn) showScreen('screen-role');
-  }, 2300);
-</script>
-</body>
-</html>
