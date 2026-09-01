@@ -1998,3 +1998,244 @@
 
   function backToRuns(){
     stopLocationSharing();
+    activeOrder = null;
+    renderDriverOrders();
+    showScreen('screen-driver-orders');
+  }
+
+  // ---------- Hamburger menu ----------
+  let screenBeforeMenu = null;
+
+  function getActiveScreenId(){
+    const el = document.querySelector('.screen.active');
+    return el ? el.id : 'screen-role';
+  }
+
+  function openMenu(){
+    document.getElementById('menu-drawer').classList.add('show');
+    document.getElementById('menu-backdrop').classList.add('show');
+  }
+  function closeMenu(){
+    document.getElementById('menu-drawer').classList.remove('show');
+    document.getElementById('menu-backdrop').classList.remove('show');
+  }
+
+  // ---------- Profile ----------
+  let currentProfile = null;
+
+  async function openProfile(){
+    screenBeforeMenu = getActiveScreenId();
+    closeMenu();
+    showScreen('screen-profile');
+    document.getElementById('profile-role-badge').textContent = selectedRole;
+    const content = document.getElementById('profile-content');
+    content.innerHTML = `<div class="empty-state">Loading…</div>`;
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('first_name, last_name, email, phone, role')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error){
+      console.error('Failed to load profile: ' + error.message);
+      content.innerHTML = `<div class="empty-state">Couldn't load your profile.</div>`;
+      return;
+    }
+
+    currentProfile = profile;
+    renderProfileView();
+  }
+
+  function renderProfileView(){
+    const content = document.getElementById('profile-content');
+    const rows = [
+      ['First name', currentProfile.first_name || 'Not provided'],
+      ['Last name', currentProfile.last_name || 'Not provided'],
+      ['Email', currentProfile.email || currentUser.email],
+      ['Cell number', currentProfile.phone || 'Not provided'],
+      ['Account type', currentProfile.role],
+    ];
+    content.innerHTML = `
+      <div class="card">
+        ${rows.map(([label, val]) => `
+          <div class="quote-line" style="border-bottom:1px solid var(--loam-light); padding:10px 0;">
+            <span class="dim mono" style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em;">${label}</span><br/>
+            <span style="font-size:14px;">${val}</span>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn btn-primary" onclick="renderProfileEdit()">Edit profile</button>
+    `;
+  }
+
+  function renderProfileEdit(){
+    const content = document.getElementById('profile-content');
+    content.innerHTML = `
+      <div class="field">
+        <label>First name</label>
+        <input id="edit-first-name" type="text" value="${currentProfile.first_name || ''}" />
+      </div>
+      <div class="field">
+        <label>Last name</label>
+        <input id="edit-last-name" type="text" value="${currentProfile.last_name || ''}" />
+      </div>
+      <div class="field">
+        <label>Cell number</label>
+        <input id="edit-phone" type="tel" value="${currentProfile.phone || ''}" />
+      </div>
+      <div id="profile-edit-error" class="mono" style="color:var(--rust); font-size:12px; margin-bottom:10px; display:none;"></div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save changes</button>
+      <button class="btn btn-ghost" onclick="renderProfileView()">Cancel</button>
+    `;
+  }
+
+  async function saveProfile(){
+    const firstName = document.getElementById('edit-first-name').value.trim();
+    const lastName = document.getElementById('edit-last-name').value.trim();
+    const phone = document.getElementById('edit-phone').value.trim();
+    const errEl = document.getElementById('profile-edit-error');
+
+    if (!firstName || !lastName || !phone){
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const { data, error } = await sb
+      .from('profiles')
+      .update({ first_name: firstName, last_name: lastName, phone: phone })
+      .eq('id', currentUser.id)
+      .select()
+      .single();
+
+    if (error){
+      console.error('Profile update failed: ' + error.message);
+      errEl.textContent = 'Could not save changes — try again.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    currentProfile = data;
+    showToast('Profile updated ✅');
+    renderProfileView();
+  }
+
+  function closeProfile(){
+    showScreen(screenBeforeMenu || 'screen-role');
+  }
+
+  // ---------- Policy / info docs ----------
+  const POLICIES = {
+    help: {
+      title: 'Help & Support',
+      body: `
+        <p>Something not working, or got a question about an order?</p>
+        <h3>Contact us</h3>
+        <p>support@gopherapp.example<br/>Add your real support email or number here.</p>
+        <h3>Common questions</h3>
+        <p><strong>Where's my order?</strong> Check "My Orders" from this menu — every request updates live.</p>
+        <p><strong>My payment didn't go through.</strong> No charge is made unless Paystack confirms success — try again, or contact support with your order details.</p>
+        <p><strong>I'm a driver and want to sign up.</strong> Choose "I'm a driver" at signup — no separate approval step yet at this early stage.</p>
+      `
+    },
+    about: {
+      title: 'About Gopher',
+      body: `
+        <p><strong>We'll fetch it.</strong></p>
+        <p>Gopher is a pickup-and-delivery service for pretty much anything — not just food. Forgot something at home? Need a couch moved across town? Tell us what you need and where, get an instant quote, and a gopher takes care of the rest — with live tracking the whole way.</p>
+        <p>Built in South Africa, for South Africa.</p>
+      `
+    },
+    install: {
+      title: 'Install Gopher',
+      body: (() => {
+        const ua = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/.test(ua);
+        const isSamsung = /SamsungBrowser/.test(ua);
+        const isFirefox = /Firefox|FxiOS/.test(ua);
+        const isEdge = /EdgA|Edg\//.test(ua);
+        const isChrome = /CriOS|Chrome/.test(ua) && !isSamsung && !isEdge;
+
+        let steps = '';
+        if (isIOS){
+          steps = `
+            <h3>On iPhone (Safari)</h3>
+            <ul>
+              <li>Tap the <strong>Share</strong> button (square with an arrow) at the bottom</li>
+              <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+              <li>Tap <strong>Add</strong> in the top right</li>
+            </ul>
+            <p class="dim" style="font-size:12px; margin-top:12px;">Note: push notifications only work after this step — a regular Safari tab can't receive them.</p>
+          `;
+        } else if (isSamsung){
+          steps = `
+            <h3>On Samsung Internet</h3>
+            <ul>
+              <li>Tap the <strong>menu icon</strong> at the bottom right (three lines, or "☰")</li>
+              <li>Tap <strong>Add page to</strong></li>
+              <li>Choose <strong>Home screen</strong> (not "Bookmarks")</li>
+              <li>Confirm by tapping <strong>Add</strong></li>
+            </ul>
+          `;
+        } else if (isFirefox){
+          steps = `
+            <h3>On Firefox</h3>
+            <p>Firefox for Android doesn't currently support installing this as a full standalone app — "Add to Home Screen" here just creates a bookmark that still opens inside Firefox, and notifications won't work properly.</p>
+            <p style="margin-top:10px;">For the full experience, please open this page in <strong>Chrome</strong> or <strong>Samsung Internet</strong> instead.</p>
+          `;
+        } else if (isEdge){
+          steps = `
+            <h3>On Edge</h3>
+            <ul>
+              <li>Tap the <strong>⋯</strong> menu at the bottom</li>
+              <li>Tap <strong>Add to phone</strong></li>
+              <li>Confirm by tapping <strong>Install</strong> / <strong>Add</strong></li>
+            </ul>
+          `;
+        } else {
+          steps = `
+            <h3>On Chrome (or similar)</h3>
+            <ul>
+              <li>Tap the <strong>⋮</strong> menu in the top right</li>
+              <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>, if shown)</li>
+              <li>Confirm by tapping <strong>Add</strong> / <strong>Install</strong></li>
+            </ul>
+          `;
+        }
+
+        return `<p>Add Gopher to your home screen for a full app-like experience — its own icon, no browser bar, and working notifications.</p>${steps}`;
+      })()
+    }
+  };
+
+  function openDoc(key){
+    screenBeforeMenu = getActiveScreenId();
+    closeMenu();
+    const doc = POLICIES[key];
+    document.getElementById('doc-title').textContent = doc.title;
+    document.getElementById('doc-body').innerHTML = doc.body;
+    showScreen('screen-doc');
+  }
+
+  function closeDoc(){
+    showScreen(screenBeforeMenu || 'screen-role');
+  }
+
+  // Set the initial package-size hint text (button already shows "active" by default in HTML)
+  document.getElementById('category-hint').textContent = CATEGORY_INFO.small.dims;
+
+  // auto-advance from loading screen: skip to app if already logged in, else role select
+  setTimeout(async () => {
+    // A password reset email link lands back here with type=recovery in the URL —
+    // catch that before anything else and send straight to the "set new password" screen.
+    if (window.location.hash.includes('type=recovery')){
+      showScreen('screen-reset-password');
+      return;
+    }
+    const loggedIn = await checkExistingSession();
+    if (!loggedIn) showScreen('screen-role');
+  }, 2300);
+</script>
+</body>
+</html>
