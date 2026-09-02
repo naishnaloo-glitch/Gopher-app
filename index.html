@@ -197,8 +197,15 @@
     margin-top:6px;
     transition:transform .12s ease, box-shadow .18s ease, opacity .12s ease, filter .12s ease;
   }
-  .btn-primary{ background:linear-gradient(180deg, #5CACEF, var(--moss)); color:var(--soil-deep); box-shadow:0 6px 16px rgba(76,159,232,0.28); }
-  .btn-primary:active{ transform:scale(0.97); box-shadow:0 2px 8px rgba(76,159,232,0.22); filter:brightness(0.96); }
+  .btn-primary{
+    background:rgba(76,159,232,0.22);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(76,159,232,0.45);
+    color:var(--moss);
+    box-shadow:0 6px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
+  }
+  .btn-primary:active{ transform:scale(0.97); background:rgba(76,159,232,0.32); box-shadow:0 3px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.10); }
   .role-pill{
     display:inline-flex; align-items:center; gap:6px;
     background:rgba(10,22,38,0.55);
@@ -280,11 +287,18 @@
   .order-pay{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--amber); }
   .order-route{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--chalk-dim); margin:6px 0 12px; }
 
-  .btn-secondary{ background:linear-gradient(180deg, #FFC93D, var(--amber)); color:var(--soil-deep); box-shadow:0 6px 16px rgba(242,183,5,0.25); }
-  .btn-secondary:active{ transform:scale(0.97); filter:brightness(0.96); }
-  .btn-ghost{ background:transparent; color:var(--chalk); border:1px solid var(--loam-light); }
-  .btn-ghost:active{ transform:scale(0.97); background:rgba(255,255,255,0.03); }
-  .btn-tab-active{ background:var(--moss); color:var(--soil-deep); box-shadow:0 3px 10px rgba(76,159,232,0.25); }
+  .btn-secondary{
+    background:rgba(242,183,5,0.20);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(242,183,5,0.45);
+    color:var(--amber);
+    box-shadow:0 6px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10);
+  }
+  .btn-secondary:active{ transform:scale(0.97); background:rgba(242,183,5,0.30); }
+  .btn-ghost{ background:transparent; color:var(--chalk); border:1px solid rgba(255,255,255,0.14); }
+  .btn-ghost:active{ transform:scale(0.97); background:rgba(255,255,255,0.04); }
+  .btn-tab-active{ background:rgba(76,159,232,0.28); color:var(--moss); border:1px solid rgba(76,159,232,0.4); }
   .btn-tab-inactive{ background:var(--loam); color:var(--chalk-dim); border:1px solid var(--loam-light); }
 
   .empty-state{ text-align:center; padding:40px 10px; color:var(--chalk-dim); font-size:13px; }
@@ -348,10 +362,9 @@
   }
   .addr-type-btn:active{ transform:scale(0.96); }
   .addr-type-btn.active{
-    background:var(--moss);
-    color:var(--soil-deep);
-    border-color:var(--moss);
-    box-shadow:0 3px 10px rgba(76,159,232,0.3);
+    background:rgba(76,159,232,0.28);
+    color:var(--moss);
+    border-color:rgba(76,159,232,0.45);
   }
 
   /* ---------- Hamburger menu ---------- */
